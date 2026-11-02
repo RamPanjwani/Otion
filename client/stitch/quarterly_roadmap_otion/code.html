@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Otion Workspace - Collaborative Editor</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#00714d",
+                        "outline-variant": "#c4c7c7",
+                        "on-tertiary-fixed": "#1d1b1a",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#cac6c3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-fixed": "#e6e1df",
+                        "on-secondary-fixed": "#002113",
+                        "primary-fixed": "#e5e2e1",
+                        "secondary": "#006c49",
+                        "secondary-container": "#6cf8bb",
+                        "surface-container-high": "#eae7e7",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#6ffbbe",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-dim": "#dcd9d9",
+                        "on-surface-variant": "#444748",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1c1b1b",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e5e2e1",
+                        "error-container": "#ffdad6",
+                        "primary": "#000000",
+                        "surface": "#fcf9f8",
+                        "on-tertiary-fixed-variant": "#484645",
+                        "surface-bright": "#fcf9f8",
+                        "tertiary-container": "#1d1b1a",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface-variant": "#e5e2e1",
+                        "inverse-on-surface": "#f3f0ef",
+                        "on-primary-container": "#858383",
+                        "inverse-surface": "#313030",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-background": "#1c1b1b",
+                        "on-tertiary-container": "#868381",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "outline": "#747878",
+                        "on-surface": "#1c1b1b",
+                        "background": "#fcf9f8",
+                        "surface-container": "#f0eded",
+                        "surface-container-low": "#f6f3f2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "sidebar-width": "240px",
+                        "base": "4px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "container-max": "900px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "label": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "h1-mobile": ["Inter"],
+                        "body": ["Inter"],
+                        "h2": ["Inter"],
+                        "h1": ["Inter"],
+                        "display-title": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "h1-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "700" }],
+                        "body": ["15px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "h2": ["20px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "h1": ["28px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "display-title": ["40px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom editor styles for WYSIWYG feel */
+        [contenteditable]:empty:before {
+            content: attr(data-placeholder);
+            color: #747878;
+            pointer-events: none;
+            display: block;
+        }
+        .editor-content > * {
+            margin-bottom: 8px;
+        }
+        .editor-content > *:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body text-body flex h-screen overflow-hidden antialiased selection:bg-surface-variant">
+<!-- SideNavBar Component -->
+<aside class="bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant dark:border-outline transition-colors duration-200 flex flex-col h-full w-sidebar-width p-sm fixed left-0 top-0 z-30">
+<!-- Header -->
+<div class="px-md py-sm mb-lg flex items-center space-x-sm cursor-pointer hover:bg-surface-container-high rounded transition-colors duration-200">
+<div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-label">
+                O
+            </div>
+<div class="flex flex-col">
+<span class="font-label text-label text-on-surface">Otion Workspace</span>
+<span class="font-label text-label text-on-surface-variant opacity-80 text-[10px]">Collaborative Space</span>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 space-y-xs font-body text-body">
+<!-- Search -->
+<a class="flex items-center space-x-md px-md py-sm rounded hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 text-on-surface-variant dark:text-on-surface-variant" href="#">
+<span class="material-symbols-outlined text-[18px]">search</span>
+<span>Search</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center space-x-md px-md py-sm rounded hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 text-on-surface-variant dark:text-on-surface-variant" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span>Settings</span>
+</a>
+<!-- New Page -->
+<a class="flex items-center space-x-md px-md py-sm rounded hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 text-on-surface-variant dark:text-on-surface-variant" href="#">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+<span>New Page</span>
+</a>
+<!-- Workspace (ACTIVE) -->
+<a class="flex items-center space-x-md px-md py-sm rounded transition-colors duration-200 text-primary font-bold bg-surface-container-high dark:bg-surface-container-highest relative" href="#">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span>Workspace</span>
+</a>
+<!-- Trash -->
+<a class="flex items-center space-x-md px-md py-sm rounded hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors duration-200 text-on-surface-variant dark:text-on-surface-variant mt-xl" href="#">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+<span>Trash</span>
+</a>
+</nav>
+<!-- Footer Avatar -->
+<div class="mt-auto px-md py-sm flex items-center space-x-sm border-t border-outline-variant pt-md">
+<img alt="User Workspace Avatar" class="w-6 h-6 rounded-full object-cover border border-outline-variant" data-alt="A small, professional profile picture of a diverse user in a well-lit studio setting, minimalist background, optimized for a UI workspace avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtyINsq8j1sdL-qkZvcokFuIkCwl4XbNf9HaN8AO3grCb3drNWO3eSP6wRTZ8kdwSRj37Eq6_HjRQDFK4Qg7A4CxQMeRFadxvo9ryfr7_dykntdEySbue2U4CGvdNlXVlCr2dpPVJMie7f7lXT4tUlp8d2AdqGSJMQcDtEkmC8a-0ocShI9kG3N5LGr6bK5phGtUs829d7CR1uWo9L7a_g6EwPI8hOyePLj2mezZwrhpxOxETFN8K50Q"/>
+<span class="font-label text-label text-on-surface-variant">User Profile</span>
+</div>
+</aside>
+<!-- Main Workspace Container -->
+<div class="flex-1 flex flex-col h-full relative ml-sidebar-width bg-background">
+<!-- TopAppBar Component -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline transition-all duration-200 flex justify-between items-center w-full px-lg h-xl fixed top-0 left-0 ml-sidebar-width max-w-[calc(100%-240px)] z-20">
+<!-- Left: Breadcrumbs -->
+<div class="flex items-center space-x-xs font-body-sm text-body-sm text-on-surface-variant">
+<span class="hover:text-primary cursor-pointer transition-colors">Otion</span>
+<span class="opacity-50">/</span>
+<span class="hover:text-primary cursor-pointer transition-colors">Workspace</span>
+<span class="opacity-50">/</span>
+<span class="font-body text-body text-primary font-medium">Quarterly Roadmap</span>
+</div>
+<!-- Right: Actions & Collaborators -->
+<div class="flex items-center space-x-lg">
+<!-- Avatar Stack (Collaborators) -->
+<div class="flex items-center -space-x-sm">
+<!-- Sarah (Editor) -->
+<div class="relative group">
+<img alt="Collaborator Avatar" class="w-7 h-7 rounded-full object-cover border-[1.5px] border-surface ring-1 ring-outline-variant z-10 relative" data-alt="A close-up portrait of a professional woman with amber-toned lighting, minimalist corporate style, suitable for a tiny UI avatar circle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWheiCwT24HF82kvkD6HcqFR_q003Grqw_k-ZExo6Au-X8mBccaSEZ1B3R8dVAQtjYw7qX3elYQVx3aI9T3K6T8YVD14-vGZidT5o7rxnZyi7JtkCRnGVS5Xqy20KOxJaDaIoSzCD1NfCkxQBmZfKhPSBwmRXGiuvI0RezqHIZe3QHWtzZOEuomGBX92Hr_-Tn05aRO0lb_Ewd1i3fkVXMtB8e0t_x8YUa8z1LYCed0JfMuwWmPdLI9Q"/>
+<!-- Role Badge Tooltip (Visible on hover in real implementation, inline here for design system demo) -->
+<div class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant rounded px-sm py-xs font-label text-label text-on-surface shadow-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                            Sarah (Editor)
+                        </div>
+</div>
+<!-- David (Viewer) -->
+<div class="relative group">
+<img alt="Collaborator Avatar" class="w-7 h-7 rounded-full object-cover border-[1.5px] border-surface ring-1 ring-outline-variant z-0 relative" data-alt="A close-up portrait of a professional man with subtle cyan-toned rim lighting, clean minimal background, suitable for a UI avatar circle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdxVv8bUsRWqqamgWFylxJpYR2o3b5rKD7k8zTr2MxyxcTzxfYZ8zR0slrS_-lTaVTcZ1tk7pqBc3jAk2UOKWyFjD344Zo5WnzdqNvJrZ367jR6SA2PnXXRmqz_t9rKs3Fx8SMG7aGUayUKC1p1IMBq7tuNNHhqLxeD5oSTEC5--cT6s1kQDbUgk7Mwe2GfPiIHFSyLy1DjUEdMVSPmlhTY6H8TSCBZUxU--8ulPRBX4lnRtWlq29KHA"/>
+</div>
+</div>
+<div class="w-px h-4 bg-outline-variant"></div>
+<!-- Icon Actions -->
+<div class="flex items-center space-x-sm text-on-surface-variant">
+<button class="p-xs rounded hover:bg-surface-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">star</span>
+</button>
+<button class="p-xs rounded hover:bg-surface-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<!-- Primary Action -->
+<button class="bg-primary hover:bg-surface-tint text-on-primary font-label text-label px-md py-[6px] rounded-DEFAULT transition-colors duration-200">
+                    Share
+                </button>
+</div>
+</header>
+<!-- Main Document Canvas -->
+<main class="flex-1 overflow-y-auto w-full flex justify-center pt-[100px] pb-xl px-xl relative">
+<article class="w-full max-w-container-max relative flex flex-col">
+<!-- Canvas Context Actions (Ghost Buttons) -->
+<div class="flex items-center space-x-sm mb-lg text-on-surface-variant opacity-60 hover:opacity-100 transition-opacity duration-200">
+<button class="flex items-center space-x-xs px-sm py-xs rounded hover:bg-surface-container text-body-sm font-body-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]">add_reaction</span>
+<span>Add icon</span>
+</button>
+<button class="flex items-center space-x-xs px-sm py-xs rounded hover:bg-surface-container text-body-sm font-body-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]">wallpaper</span>
+<span>Add cover</span>
+</button>
+</div>
+<!-- Document Title -->
+<div class="mb-xl relative group">
+<h1 class="font-display-title text-display-title text-primary outline-none whitespace-pre-wrap break-words" contenteditable="true" data-placeholder="Untitled">Quarterly Roadmap</h1>
+<!-- Live Cursor: Sarah (Indigo/Primary Container equivalent) -->
+<div class="absolute left-[340px] top-[10px] flex flex-col items-start pointer-events-none z-30 animate-pulse">
+<div class="w-[2px] h-8 bg-[#4F46E5]"></div>
+<div class="bg-[#4F46E5] text-white text-[10px] font-label px-xs py-[2px] rounded-r rounded-bl whitespace-nowrap shadow-sm mt-[1px]">
+                            Sarah
+                        </div>
+</div>
+</div>
+<!-- Document Content (Inline WYSIWYG) -->
+<div class="editor-content font-body text-body text-on-surface w-full max-w-[700px]">
+<h2 class="font-h2 text-h2 text-primary mt-lg mb-sm outline-none" contenteditable="true">Q3 Objectives & Key Results</h2>
+<p class="text-on-surface-variant outline-none leading-relaxed mb-md" contenteditable="true">
+                        This quarter, we are focusing heavily on stabilizing our core infrastructure and expanding the collaborative features of the workspace. All teams should align their individual sprints with the following primary goals.
+                    </p>
+<!-- Checklist Block -->
+<div class="flex flex-col space-y-xs my-md">
+<div class="flex items-start space-x-sm group">
+<input checked="" class="mt-[5px] w-4 h-4 rounded-sm text-primary border-outline-variant focus:ring-primary focus:ring-offset-0 cursor-pointer" type="checkbox"/>
+<span class="outline-none line-through text-on-surface-variant opacity-70 flex-1" contenteditable="true">Finalize UI component audit and Design System migration.</span>
+</div>
+<div class="flex items-start space-x-sm group">
+<input class="mt-[5px] w-4 h-4 rounded-sm text-primary border-outline-variant focus:ring-primary focus:ring-offset-0 cursor-pointer" type="checkbox"/>
+<span class="outline-none flex-1" contenteditable="true">Implement real-time presence indicators across all document views.</span>
+<!-- Inline Collaborator Context (David Viewer) -->
+<div class="opacity-0 group-hover:opacity-100 transition-opacity ml-auto flex items-center">
+<img alt="Viewer" class="w-5 h-5 rounded-full ring-2 ring-background border border-outline-variant" data-alt="Small UI avatar cyan tint" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7LzE9vgBSsU5iJPb5Gf2TcQGnEAyD5hELRu4VmY8_i_yvUzkXn8PEn2aaUQiI8eAT9jnxY-XOxVzrNs-musLjO4_myKHvMd71niM_xXgC_t1D-T6WWFCjBGw83ud57yXgNfBv7__eVxKk1lCbETmLdIjcdMLdxf3n8lCKV4rIEAQCe7js7HbPMobT-pQDYx2seIP4frmclNdnxNsbvHysLo9b0h945zhUGn5D7K_H1WSWMa2dRDN3Ew"/>
+</div>
+</div>
+<div class="flex items-start space-x-sm group">
+<input class="mt-[5px] w-4 h-4 rounded-sm text-primary border-outline-variant focus:ring-primary focus:ring-offset-0 cursor-pointer" type="checkbox"/>
+<span class="outline-none flex-1" contenteditable="true">Launch beta program for enterprise SSO integration.</span>
+</div>
+</div>
+<h2 class="font-h2 text-h2 text-primary mt-xl mb-sm outline-none" contenteditable="true">Resource Allocation</h2>
+<!-- Bulleted List -->
+<ul class="list-disc pl-lg space-y-xs mb-md text-on-surface-variant marker:text-outline-variant">
+<li class="outline-none" contenteditable="true"><strong class="text-on-surface font-medium">Design Team:</strong> 40% time dedicated to accessibility improvements.</li>
+<li class="outline-none relative" contenteditable="true">
+<strong class="text-on-surface font-medium">Engineering:</strong> Scaling the websocket architecture for concurrent editing.
+                            
+                            <!-- Another subtle cursor trace -->
+<div class="absolute left-[300px] top-[4px] flex flex-col items-start pointer-events-none z-30 opacity-40">
+<div class="w-[2px] h-5 bg-[#06B6D4]"></div>
+<div class="bg-[#06B6D4] text-white text-[9px] font-label px-[4px] py-[1px] rounded-r rounded-bl whitespace-nowrap mt-[1px]">
+                                    David
+                                </div>
+</div>
+</li>
+<li class="outline-none" contenteditable="true"><strong class="text-on-surface font-medium">Marketing:</strong> Preparing collateral for the upcoming major release cycle.</li>
+</ul>
+<!-- Empty block for typing -->
+<div class="mt-lg py-sm relative group cursor-text">
+<div class="absolute -left-lg top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-xs text-outline-variant">
+<button class="p-xs hover:bg-surface-container rounded"><span class="material-symbols-outlined text-[16px]">add</span></button>
+<button class="p-xs hover:bg-surface-container rounded"><span class="material-symbols-outlined text-[16px]">drag_indicator</span></button>
+</div>
+<p class="outline-none min-h-[24px] text-on-surface-variant empty:before:content-['Type_\'/\'_for_commands'] empty:before:opacity-40" contenteditable="true"></p>
+</div>
+</div>
+</article>
+</main>
+</div>
+</body></html>

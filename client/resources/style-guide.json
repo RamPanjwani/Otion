@@ -1,0 +1,8 @@
+{
+  "source": "Google Stitch project 12320258871704573895",
+  "colors": { "canvas": "#FCF9F8", "ink": "#1C1B1B", "muted": "#747878", "line": "#E5E2E1", "panel": "#F6F3F2", "accent": "#006C49" },
+  "fontFamilies": { "sans": "Inter, ui-sans-serif, system-ui, sans-serif" },
+  "spacing": { "base": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "40px", "sidebar": "240px", "documentMax": "900px" },
+  "radii": { "default": "6px", "pill": "9999px" },
+  "typography": { "body": { "size": "15px", "lineHeight": "1.6", "weight": 400 }, "title": { "size": "40px", "lineHeight": "1.2", "weight": 700 } }
+}
