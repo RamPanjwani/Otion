@@ -5,10 +5,29 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (error, req, res, next) => {
   void next;
-  const status = res.statusCode >= 400 ? res.statusCode : 500;
+  const status = error.statusCode || (res.statusCode >= 400 ? res.statusCode : 500);
+  const fallbackCode = {
+    400: 'BAD_REQUEST',
+    401: 'UNAUTHENTICATED',
+    403: 'FORBIDDEN',
+    404: 'NOT_FOUND',
+    409: 'CONFLICT',
+    429: 'RATE_LIMITED',
+    500: 'INTERNAL_ERROR',
+  }[status] || 'REQUEST_FAILED';
+  if (status >= 500) req.log?.error({ err: error }, 'Unhandled request error');
+  const message = status >= 500 && process.env.NODE_ENV === 'production'
+    ? 'Unexpected server error'
+    : error.message || 'Unexpected server error';
   res.status(status).json({
-    message: error.message || 'Unexpected server error',
-    stack: process.env.NODE_ENV === 'production' ? undefined : error.stack,
+    message,
+    error: {
+      code: error.code || fallbackCode,
+      message,
+      details: error.details,
+      requestId: req.id,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    },
   });
 };
 

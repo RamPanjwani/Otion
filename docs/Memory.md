@@ -1,105 +1,107 @@
-# Memory State & Completion Record — Otion Workspace
+# Otion implementation memory
 
-## System status
+Last verified: 2026-11-03 (Asia/Calcutta)
 
-The full-stack implementation is complete across the React client, Express/Mongoose API, and Socket.io collaboration layer. The Google Stitch project `Otion Collaborative Workspace 1` (`12320258871704573895`) is represented by the responsive workspace shell, authentication card, document editor, and sharing dialog.
+## Delivered foundation
 
-## Phase completion
+- [x] React/Vite/Tailwind client with responsive 240px workspace shell.
+- [x] Express, Mongoose, Socket.io, JWT/bcrypt authentication, request validation, structured errors, Helmet, rate limits, production CORS allowlist, and redacted request logging.
+- [x] Registration confirmation-password validation and bearer-token session handling.
+- [x] CI workflow for server tests/audit and client lint/build/audit.
+- [x] Ordered MongoDB migration runner; active migrations `001`–`009` and `011`–`014` applied to the configured database (retired asset migration `010` is superseded by cleanup migration `012`).
+- [x] Luma-inspired UI/UX system adapted to Otion: ambient gradients, semantic light/dark tokens, glass/elevated surfaces, responsive application chrome, Motion transitions with reduced-motion support, Lucide icon normalization, and Zod-powered authentication validation.
 
-### Phase 1 — Foundation, Infrastructure & Authentication
+## Workspace and notes
 
-- [x] Express server, MongoDB connection, middleware, and environment templates
-- [x] User model with bcrypt password hashing
-- [x] JWT register, login, and current-user contracts
-- [x] Axios bearer-token injection and automatic 401 session clearing
-- [x] Auth context, protected routes, login, and registration views
+- [x] `Workspace`, `WorkspaceMembership`, and `UserNotePreference` models.
+- [x] One personal workspace per user; workspace switching and additional workspace creation are intentionally unavailable.
+- [x] Favorites are per-user; viewers can favorite notes without modifying shared note state.
+- [x] Recently opened timestamps and live note summaries.
+- [x] Flat, user-specific note ordering with drag handles, move-up/move-down controls, realtime order synchronization, and no note hierarchy.
+- [x] Every note receives a default emoji; migration `013` backfilled existing notes and flattened legacy parent relationships.
+- [x] Note covers were removed from the UI, API contracts, persistence schema, revision snapshots, and existing Atlas data by migration `014`.
+- [x] Archiving/restoring affects only the selected note; permanent deletion removes only that note.
+- [x] Note duplication backend contract.
 
-### Phase 2 — Workspace Architecture & Note CRUD
+## Editor and collaboration
 
-- [x] Note model and ownership/shared-access queries
-- [x] Create, list, retrieve, and update note contracts
-- [x] Responsive 240px sidebar, workspace dashboard, and document navigation
-- [x] Recent-document overview and quick note creation
+- [x] Stable-ID block editor with paragraphs, H1–H3, tasks, code, bullets, numbered lists, quote, callout, divider, image URL, and table/TSV blocks.
+- [x] Conflict-safe inline rich text using native Yjs text attributes: bold, italic, underline, strike, inline code, links, keyboard shortcuts, mark removal, safe URL rendering, and caret-preserving remote updates.
+- [x] External-URL image blocks; managed object/file uploads are intentionally excluded from the product.
+- [x] Slash commands, plain-text paste sanitization, heading shortcuts, emoji, covers, 500 ms autosave, and immediate manual save.
+- [x] Yjs incremental CRDT updates replace whole-document broadcasts.
+- [x] Persisted snapshots plus incremental update log, restart recovery, compaction, reconnect state-vector merge, and JSON read-model compatibility.
+- [x] Socket JWT authentication and permission validation on every collaborative update.
+- [x] Presence avatars, normalized moving pointers, block-relative selections, and immediate role/revocation enforcement.
+- [x] Session undo/redo.
 
-### Phase 3 — Block-Based Editor
+## History, sharing, and discovery
 
-- [x] Paragraph, H1, H2, H3, task, and code blocks
-- [x] Slash-command block menu
-- [x] 500ms debounced persistence
-- [x] Emoji icon and cover image controls
+- [x] `NoteRevision` history with automatic snapshots, named manual versions, timeline UI, protected restore, and pre-restore preservation.
+- [x] Existing-user invite autocomplete, editor/commenter/viewer role changes, instant dashboard discovery, and live access revocation.
+- [x] Secure seven-day pending invitations for unregistered emails, copyable acceptance links, registration-time acceptance, and owner revocation.
+- [x] Public access exists only after the owner explicitly creates it.
+- [x] Public URLs use 256-bit random bearer tokens; only SHA-256 hashes are stored. Links support optional bcrypt-protected passwords and expiration. Disabled, malformed, expired, and nonexistent tokens return the same generic 404.
+- [x] Authenticated users cannot bypass the public token with a note ID.
+- [x] Dedicated permission-scoped search API for title/block text plus debounced sidebar results.
+- [x] Page comments, collaborator `@email` mentions, resolve/reopen, realtime refresh, share/comment/mention notifications, and an in-app notification feed.
+- [x] Trash restore and permanent deletion.
 
-### Phase 4 — Real-Time Collaboration
-
-- [x] Socket.io room join/leave lifecycle
-- [x] Block change broadcasting without sender echo
-- [x] Presence avatar stack
-- [x] Live collaborator cursor labels
-
-### Phase 5 — Sharing & Permissions
-
-- [x] Owner/editor/viewer permission model
-- [x] Email invitation and role assignment
-- [x] Collaborator access listing and revocation
-- [x] Public read-only link toggle
-
-### Phase 6 — Trash & Final Polish
-
-- [x] Archive, restore, and permanent deletion contracts
-- [x] Trash recovery manager
-- [x] Stitch-derived color, radius, spacing, and responsive layout tokens
-- [x] Loading and error states
-- [x] Client lint and production build verification
-- [x] Backend syntax/module verification
-
-## API contracts
+## Current API contracts
 
 ### Authentication — `/api/auth`
 
-- `POST /register` — `{ name, email, password }` → authenticated user and JWT
-- `POST /login` — `{ email, password }` → authenticated user and JWT
-- `GET /me` — bearer-authenticated current user
+- `POST /register`, `POST /login`, `GET /me`
+- `PATCH /profile`, `PATCH /password`, `GET /export`, `DELETE /account`
+
+### Workspaces — `/api/workspaces`
+
+- `GET /`, `POST /`, `PATCH /:id`
 
 ### Notes — `/api/notes`
 
-- `GET /?archived=false` — owned and shared active notes
-- `GET /?archived=true` — owner’s archived notes
-- `POST /` — create a note
-- `GET /:id` — retrieve with resolved `accessRole`
-- `PUT /:id` — update title, blocks, icon, cover, or parent
-- `PATCH /:id/archive` — soft delete (owner)
-- `PATCH /:id/restore` — restore (owner)
-- `DELETE /:id` — permanent delete and permission cleanup (owner)
+- `GET /?archived=&workspaceId=`, `POST /`, `GET /:id`, `PUT /:id`, `DELETE /:id`
+- `PATCH /:id/archive`, `PATCH /:id/restore`, `PATCH /:id/preferences`
+- `POST /:id/duplicate`
+- `GET /:id/revisions`, `POST /:id/revisions`, `POST /:id/revisions/:revisionId/restore`
 
-### Sharing — `/api/share`
+### Sharing and public reads
 
-- `POST /:noteId/invite` — invite an existing user as editor/viewer
-- `GET /:noteId/collaborators` — owner and permission list
-- `DELETE /:noteId/user/:userId` — revoke access
-- `PATCH /:noteId/public` — set/toggle public visibility
+- `POST /api/share/:noteId/invite`
+- `GET /api/share/:noteId/collaborators`
+- `PATCH|DELETE /api/share/:noteId/user/:userId`
+- `DELETE /api/share/:noteId/invitation/:invitationId`
+- `PATCH /api/share/:noteId/public`
+- `GET /api/public/:token`
 
-Published notes are available read-only at `/public/:id`; the API permits anonymous `GET /api/notes/:id` only when `isPublished` is true.
+### Search
 
-### Realtime events
+- `GET /api/search?q=&workspaceId=&archived=&favorite=`
 
-- `join-note`, `leave-note`
-- `send-changes` → `receive-changes`
-- `cursor-move`
-- `presence-update`
+### Comments and notifications
 
-## Verification log
+- `GET|POST /api/comments/note/:noteId`
+- `PATCH /api/comments/:id/resolve`
+- `GET /api/notifications`, `PATCH /api/notifications/:id/read`
 
-- Client ESLint: passed with zero warnings/errors.
-- Client production build: passed (`vite build`, 1,681 modules transformed).
-- Backend syntax: all server, controller, model, middleware, route, config, and utility modules passed `node --check`.
-- Runtime database verification: passed against the configured MongoDB Atlas deployment; the API started successfully and `GET /api/health` returned `{ "status": "ok" }`. Secrets remain confined to the ignored `server/.env` file.
-- Editor caret stability: content-editable blocks now preserve the browser selection during state updates, preventing reversed input.
-- Permission hardening: sockets authenticate with JWT, re-check write permission, and are evicted immediately after access revocation.
-- Public-link privacy: links are disclosed only after publishing; disabled, invalid, and nonexistent public URLs return the same generic 404 response. Open public views revalidate every three seconds and on tab focus.
-- Cursor alignment: presence coordinates are document-relative and horizontally normalized instead of viewport-relative.
-- Manual save: editors and owners can bypass the debounce with the toolbar Save button; the API persists immediately and broadcasts the complete saved document to all active note-room clients.
-- Dashboard/sidebar synchronization: create, save, archive, restore, share, revoke, title, icon, and favorite changes publish compact note summaries to each affected user's personal socket room.
-- Collaborator role management: owners can switch each collaborator between Editor and Viewer directly from the access list; open sessions update immediately.
-- Live presence: mouse pointers use normalized document coordinates with smooth movement, and multi-character selections are broadcast as block-relative ranges, highlighted remotely, and shown with the selected text.
-- Favorites: the document star is persisted as `isFavorite` and synchronized to active clients.
-- Note search: the sidebar search filters owned and shared notes by title and block text, supports `Ctrl/Cmd+K`, Enter-to-open, Escape-to-close, and an explicit no-results state.
-- Share account discovery: the invite field searches authenticated Otion accounts by name or email after two characters, debounces requests, limits results, and excludes the owner and existing collaborators.
+### Realtime protocol
+
+- Room/access: `join-note`, `leave-note`, `permission-changed`, `access-revoked`
+- CRDT: `collab-sync`, `collab-update`, `collab-error`
+- Awareness: `presence-update`, `cursor-move`, `selection-change`
+- Navigation: `note-sync`, `note-remove`, `document-saved`
+
+## Verification status
+
+- Server integration suite: passing, including auth validation, flat note ordering/archive/restore, owner/editor/viewer rules, private search concealment, tokenized public privacy, Yjs concurrent convergence, version restore, and live socket revocation.
+- Client ESLint: passing with zero errors.
+- Client production build: passing on Vite 8.
+- Responsive visual QA: passing at desktop and 390 px mobile widths in light/dark themes; browser console clean.
+- Route-level splitting: passing; the main production bundle is approximately 295 kB before gzip, with editor/settings/pages emitted as separate chunks.
+- Production dependency audit: no known production vulnerabilities at the last audit.
+- Docker/Nginx/Compose definitions: created; runtime validation remains pending because Docker is not installed in the implementation environment.
+- Existing Atlas data retained across workspace/CRDT/revision/search migrations; migration `013` added default emojis to 7 existing notes and found no remaining nested notes.
+
+## Remaining roadmap
+
+The following larger roadmap items are not represented as complete: multi-block drag/selection; automated invitation email delivery; threaded/block-targeted comment UI and email notifications; forgot-password/email-verification/active-session management; full accessibility audit; pagination/virtualization; staging/monitoring/backups; and production load/restore drills. Complete inline rich-text marks are implemented. Object uploads are intentionally outside the product scope. See `Implementation-Plan.md` for sequencing.

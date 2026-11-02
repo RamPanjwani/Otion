@@ -50,7 +50,7 @@ This document outlines the sequential, incremental build phases for developing t
   * Build slash-command (`/`) popup trigger menu for block selection.
 * **Document Customization:**
   * Add emoji icon picker support to document headers.
-  * Add dynamic cover image banner upload/picker triggers.
+  * Add dynamic cover image URL/picker triggers.
   * Implement debounced auto-saving to update note content via `PUT /api/notes/:id`.
 
 ---

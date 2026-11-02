@@ -1,5 +1,7 @@
 # Architecture & Application Flow — Otion Workspace
 
+> Current implementation note (2026-11-03): collaborative content and inline formatting use incremental Yjs CRDT updates (`collab-sync`/`collab-update`) with persisted snapshots and an update log. The older `send-changes`/`receive-changes` diagrams later in this historical document are superseded. Public reads use hashed random tokens at `/api/public/:token`, never document IDs. Object uploads are intentionally unsupported; image blocks reference external HTTPS URLs. Current collections also include workspaces, workspace memberships, user note preferences, collaboration states/updates, note revisions, public shares, invitations, comments, and notifications. See `Memory.md` for the authoritative contract list.
+
 ## 1. High-Level Architecture Overview
 
 Otion follows a decoupled client-server architecture utilizing a RESTful HTTP layer for CRUD persistence and dynamic WebSockets for low-latency real-time collaboration.

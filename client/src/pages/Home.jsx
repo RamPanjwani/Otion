@@ -1,16 +1,119 @@
-import { ArrowRight, FileText, Radio, ShieldCheck } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ArrowRight, CheckCircle2, FileText, Moon, MousePointer2, Sparkles, Sun, Users2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AmbientBackground from '../components/AmbientBackground';
+import BrandMark from '../components/BrandMark';
 import useAuth from '../hooks/useAuth';
+import useTheme from '../hooks/useTheme';
+
+const ease = [0.22, 1, 0.36, 1];
 
 export default function Home() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const workspacePath = user ? '/dashboard' : '/register';
+
   return (
-    <main className="min-h-screen bg-canvas px-5">
-      <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between border-b border-line"><Link to="/" className="flex items-center gap-3 text-xl font-bold"><span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-white">O</span>Otion</Link><div className="flex items-center gap-3"><Link to={user ? '/dashboard' : '/login'} className="rounded-xl px-4 py-2 text-sm font-semibold hover:bg-panel">{user ? 'Workspace' : 'Sign in'}</Link><Link to={user ? '/dashboard' : '/register'} className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white">Get started</Link></div></nav>
-      <section className="mx-auto grid min-h-[calc(100vh-80px)] max-w-6xl items-center gap-12 py-20 lg:grid-cols-[1.1fr_.9fr]">
-        <div><p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-accent">A calmer place to think together</p><h1 className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-[-0.04em] sm:text-7xl">Write, organize, and collaborate without the noise.</h1><p className="mt-7 max-w-2xl text-lg leading-8 text-muted">Otion brings documents, tasks, and live teamwork into one focused workspace built for momentum.</p><Link to={user ? '/dashboard' : '/register'} className="mt-9 inline-flex items-center gap-2 rounded-xl bg-ink px-6 py-3.5 font-semibold text-white">Open your workspace <ArrowRight size={18} /></Link></div>
-        <div className="rounded-xl border border-line bg-white p-5 shadow-xl shadow-ink/5"><div className="mb-10 flex items-center justify-between border-b border-line pb-4 text-sm"><span>Quarterly Roadmap</span><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-accent">3 people live</span></div><h2 className="text-3xl font-bold">Q3 Objectives</h2><p className="mt-4 leading-7 text-muted">A shared plan for stabilizing the platform and bringing real-time collaboration to every document.</p><div className="mt-8 space-y-3">{[[FileText,'Blocks that stay flexible'],[Radio,'Presence that feels instant'],[ShieldCheck,'Permissions you control']].map(([Icon,label]) => <div key={label} className="flex items-center gap-3 rounded-xl border border-line p-4"><Icon size={18}/><span className="font-medium">{label}</span></div>)}</div></div>
+    <main className="relative min-h-screen overflow-hidden">
+      <AmbientBackground />
+      <header className="relative z-20 px-4 pt-4 sm:px-6">
+        <nav className="glass-panel mx-auto flex h-16 max-w-6xl items-center justify-between rounded-2xl px-4 sm:px-5" aria-label="Primary navigation">
+          <Link to="/" aria-label="Otion home"><BrandMark compact /></Link>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <a href="#why-otion" className="hidden rounded-xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-panel hover:text-ink sm:inline-flex">Why Otion</a>
+            <button type="button" onClick={toggleTheme} className="icon-action h-10 w-10" aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}>
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <Link to={user ? '/dashboard' : '/login'} className="hidden rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:text-ink sm:inline-flex">{user ? 'Workspace' : 'Sign in'}</Link>
+            <Link to={workspacePath} className="primary-action px-4 py-2.5 text-sm">{user ? 'Open Otion' : 'Get started'}<ArrowRight size={16} /></Link>
+          </div>
+        </nav>
+      </header>
+
+      <section className="relative mx-auto grid min-h-[calc(100vh-96px)] max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-20">
+        <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease }} className="relative z-10">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted shadow-sm backdrop-blur-xl">
+            <Sparkles size={14} className="text-accent" /> A luminous space for focused teams
+          </div>
+          <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            Ideas move faster when everyone is <span className="text-brand-gradient">in the flow.</span>
+          </h1>
+          <p className="mt-7 max-w-xl text-lg leading-8 text-muted sm:text-xl">
+            Write, organize, and shape notes together in one calm workspace—without losing context to tabs, tools, or version chaos.
+          </p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link to={workspacePath} className="primary-action px-6 py-3.5">{user ? 'Continue to workspace' : 'Create your workspace'}<ArrowRight size={18} /></Link>
+            <Link to={user ? '/dashboard' : '/login'} className="secondary-action px-6 py-3.5">{user ? 'View notes' : 'I already have an account'}</Link>
+          </div>
+          <div id="why-otion" className="mt-10 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-accent" /> Realtime editing</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-accent" /> Private by default</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-accent" /> Version history</span>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, scale: 0.96, y: 26 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease }} className="relative mx-auto w-full max-w-[620px]">
+          <div className="absolute -inset-8 -z-10 rounded-[44px] bg-brand-gradient opacity-20 blur-3xl" />
+          <div className="elevated-panel overflow-hidden rounded-[24px] p-2">
+            <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
+              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div>
+              <span className="text-[11px] font-medium text-muted">otion.app/workspace</span>
+              <span className="w-12" />
+            </div>
+            <div className="grid min-h-[430px] grid-cols-[150px_1fr] overflow-hidden rounded-b-[18px] bg-surface/75 sm:grid-cols-[180px_1fr]">
+              <aside className="border-r border-line bg-panel/45 p-3">
+                <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-gradient text-[10px] font-bold text-white">O</span><span className="truncate text-xs font-semibold">Design team</span></div>
+                <PreviewNav icon={<Sparkles size={13} />} label="Quick notes" />
+                <PreviewNav icon={<FileText size={13} />} label="Product brief" active />
+                <PreviewNav icon={<Users2 size={13} />} label="Research" />
+                <p className="mb-2 mt-6 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted">Shared</p>
+                <PreviewNav icon={<FileText size={13} />} label="Launch plan" />
+                <PreviewNav icon={<FileText size={13} />} label="Team handbook" />
+              </aside>
+              <article className="relative px-6 py-8 sm:px-9">
+                <div className="mb-5 flex items-center justify-between">
+                  <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[10px] font-semibold text-accent">Product</span>
+                  <div className="flex -space-x-1.5"><Avatar letter="A" tone="violet" /><Avatar letter="M" tone="pink" /><Avatar letter="J" tone="cyan" /></div>
+                </div>
+                <div className="mb-4 text-4xl">✦</div>
+                <h2 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Product brief</h2>
+                <p className="mt-3 text-xs leading-5 text-muted sm:text-sm">A shared source of truth for the next chapter of the product.</p>
+                <div className="mt-8 space-y-5">
+                  <PreviewSection title="The opportunity" lines={[92, 78, 86]} />
+                  <PreviewSection title="What we are building" lines={[88, 70]} />
+                  <div className="grid grid-cols-2 gap-2 pt-1"><MiniCard label="Research" value="12 insights" /><MiniCard label="Decisions" value="8 aligned" /></div>
+                </div>
+                <motion.div animate={{ x: [0, 24, 8], y: [0, 18, 42] }} transition={{ duration: 5, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }} className="pointer-events-none absolute right-10 top-40 hidden sm:block">
+                  <MousePointer2 size={19} className="fill-violet-500 text-white drop-shadow" /><span className="ml-3 block rounded-full bg-violet-500 px-2 py-1 text-[9px] font-semibold text-white shadow-lg">Maya</span>
+                </motion.div>
+              </article>
+            </div>
+          </div>
+        </motion.div>
       </section>
+
+      <footer className="relative mx-auto flex max-w-6xl flex-col gap-4 border-t border-line px-6 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+        <BrandMark compact className="text-ink" />
+        <p>Built for thoughtful work and fast-moving teams.</p>
+        <div className="flex gap-4"><Link to="/login" className="hover:text-ink">Sign in</Link><Link to="/register" className="hover:text-ink">Create account</Link></div>
+      </footer>
     </main>
   );
+}
+
+function PreviewNav({ icon, label, active = false }) {
+  return <div className={`mb-1 flex items-center gap-2 rounded-lg px-2 py-2 text-[10px] sm:text-xs ${active ? 'bg-surface font-semibold text-ink shadow-sm' : 'text-muted'}`}>{icon}<span className="truncate">{label}</span></div>;
+}
+
+function Avatar({ letter, tone }) {
+  const tones = { violet: 'bg-violet-500', pink: 'bg-pink-500', cyan: 'bg-cyan-500' };
+  return <span className={`grid h-7 w-7 place-items-center rounded-full border-2 border-surface text-[9px] font-bold text-white ${tones[tone]}`}>{letter}</span>;
+}
+
+function PreviewSection({ title, lines }) {
+  return <section><h3 className="mb-2 text-xs font-semibold sm:text-sm">{title}</h3><div className="space-y-2">{lines.map((width) => <div key={width} className="h-2 rounded-full bg-panel" style={{ width: `${width}%` }} />)}</div></section>;
+}
+
+function MiniCard({ label, value }) {
+  return <div className="rounded-xl border border-line bg-surface/70 p-3"><p className="text-[9px] uppercase tracking-wider text-muted">{label}</p><p className="mt-1 text-[11px] font-semibold sm:text-xs">{value}</p></div>;
 }

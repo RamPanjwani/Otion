@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api'),
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -14,7 +14,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.data?.error?.code === 'INVALID_TOKEN') {
       sessionStorage.removeItem('otion_token');
       localStorage.removeItem('otion_token');
       window.dispatchEvent(new Event('otion:unauthorized'));

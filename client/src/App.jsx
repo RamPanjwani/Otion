@@ -1,13 +1,16 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './hooks/useAuth';
 import Loading from './components/Loading';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import NoteEditor from './pages/NoteEditor';
-import Trash from './pages/Trash';
-import PublicNote from './pages/PublicNote';
+
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NoteEditor = lazy(() => import('./pages/NoteEditor'));
+const Trash = lazy(() => import('./pages/Trash'));
+const PublicNote = lazy(() => import('./pages/PublicNote'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -17,15 +20,17 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <Routes>
+    <Suspense fallback={<Loading fullPage />}><Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/notes/:id" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
       <Route path="/documents/:id" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
       <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
-      <Route path="/public/:id" element={<PublicNote />} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/public/:token" element={<PublicNote />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></Suspense>
   );
 }

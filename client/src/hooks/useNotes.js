@@ -16,7 +16,7 @@ export default function useNotes({ archived = false } = {}) {
       setNotes(data);
       setError('');
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to load documents');
+      setError(requestError.response?.data?.message || 'Unable to load notes');
     } finally {
       setLoading(false);
     }
@@ -26,7 +26,7 @@ export default function useNotes({ archived = false } = {}) {
     let active = true;
     api.get('/notes', { params: { archived } })
       .then(({ data }) => { if (active) { setNotes(data); setError(''); } })
-      .catch((requestError) => { if (active) setError(requestError.response?.data?.message || 'Unable to load documents'); })
+      .catch((requestError) => { if (active) setError(requestError.response?.data?.message || 'Unable to load notes'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [archived]);
@@ -38,16 +38,28 @@ export default function useNotes({ archived = false } = {}) {
       setNotes((current) => {
         const withoutNote = current.filter((item) => item._id !== note._id);
         if (Boolean(note.isArchived) !== archived) return withoutNote;
-        return [note, ...withoutNote].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        return [note, ...withoutNote].sort(compareNotes);
       });
     };
+    const reorderNotes = ({ noteIds }) => setNotes((current) => {
+      const position = new Map(noteIds.map((noteId, index) => [String(noteId), index]));
+      return [...current].sort((a, b) => (position.get(String(a._id)) ?? Number.MAX_SAFE_INTEGER) - (position.get(String(b._id)) ?? Number.MAX_SAFE_INTEGER));
+    });
     const removeNote = ({ noteId }) => setNotes((current) => current.filter((note) => note._id !== noteId));
     socket.on('note-sync', syncNote);
+    socket.on('note-order', reorderNotes);
     socket.on('note-remove', removeNote);
     return () => {
       socket.off('note-sync', syncNote);
+      socket.off('note-order', reorderNotes);
       socket.off('note-remove', removeNote);
     };
   }, [archived, user]);
   return { notes, setNotes, loading, error, refresh };
+}
+
+function compareNotes(a, b) {
+  const aOrder = Number.isFinite(a.sortOrder) ? a.sortOrder : -1;
+  const bOrder = Number.isFinite(b.sortOrder) ? b.sortOrder : -1;
+  return aOrder - bOrder || new Date(b.updatedAt) - new Date(a.updatedAt);
 }

@@ -35,6 +35,8 @@ export function AuthProvider({ children }) {
     return data;
   }, [persistSession]);
 
+  const updateUser = useCallback((patch) => setUser((current) => current ? { ...current, ...patch } : current), []);
+
   useEffect(() => {
     const hydrate = async () => {
       const token = sessionStorage.getItem('otion_token') || localStorage.getItem('otion_token');
@@ -56,6 +58,6 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('otion:unauthorized', logout);
   }, [logout]);
 
-  const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading, login, register, logout]);
+  const value = useMemo(() => ({ user, loading, login, register, logout, updateUser }), [user, loading, login, register, logout, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -6,7 +6,9 @@ const protect = asyncHandler(async (req, res, next) => {
   const authorization = req.headers.authorization || '';
   if (!authorization.startsWith('Bearer ')) {
     res.status(401);
-    throw new Error('Authentication required');
+    const error = new Error('Authentication required');
+    error.code = 'INVALID_TOKEN';
+    throw error;
   }
 
   try {
@@ -16,7 +18,9 @@ const protect = asyncHandler(async (req, res, next) => {
     next();
   } catch (error) {
     res.status(401);
-    throw new Error('Invalid or expired token', { cause: error });
+    const authError = new Error('Invalid or expired token', { cause: error });
+    authError.code = 'INVALID_TOKEN';
+    throw authError;
   }
 });
 
