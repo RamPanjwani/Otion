@@ -40,6 +40,7 @@ export default function NoteEditor() {
   const [actionError, setActionError] = useState('');
   const [viewSettings, setViewSettings] = useState(readViewSettings);
   const dirtyRef = useRef(false);
+  const editVersionRef = useRef(0);
   const lastPointerRef = useRef(0);
   const articleRef = useRef(null);
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export default function NoteEditor() {
   const collaborative = useCollaborativeNote(id, Boolean(note?._id === id && user), useCallback((content, metadata) => {
     if (metadata?.local) {
       dirtyRef.current = true;
+      editVersionRef.current += 1;
       setSaveStatus('unsaved');
     }
     setNote((current) => current ? { ...current, content } : current);
@@ -79,10 +81,11 @@ export default function NoteEditor() {
     connectSocket();
     if (socket.connected) joinNote();
     const documentSaved = ({ document }) => {
-      dirtyRef.current = false;
-      setNote((current) => current ? { ...current, ...document } : current);
-      setNotes((current) => current.map((item) => item._id === id ? { ...item, ...document } : item));
-      setSaveStatus('saved');
+      setNote((current) => current ? { ...current, updatedAt: document.updatedAt || current.updatedAt } : current);
+      setNotes((current) => current.map((item) => item._id === id ? { ...item, updatedAt: document.updatedAt || item.updatedAt } : item));
+      if (!dirtyRef.current) {
+        setSaveStatus('saved');
+      }
     };
     const updatePresence = (members) => {
       setPresence(members);
@@ -152,10 +155,17 @@ export default function NoteEditor() {
 
   useDebouncedEffect(() => {
     if (!note || !dirtyRef.current || !['owner', 'editor'].includes(note.accessRole)) return;
-    dirtyRef.current = false;
+    const versionToSave = editVersionRef.current;
     setSaveStatus('saving');
-    api.put(`/notes/${id}`, { title: note.title, content: note.content, icon: note.icon || '📝', saveReason: 'autosave' }).then(() => {
-      setSaveStatus('saved');
+    api.put(`/notes/${id}`, { title: note.title, content: note.content, icon: note.icon || '📝', saveReason: 'autosave' }).then(({ data }) => {
+      setNote((current) => current ? { ...current, updatedAt: data?.updatedAt || current.updatedAt } : current);
+      if (editVersionRef.current === versionToSave) {
+        dirtyRef.current = false;
+        setSaveStatus('saved');
+      } else {
+        dirtyRef.current = true;
+        setSaveStatus('unsaved');
+      }
     }).catch((requestError) => {
       if ([403, 404].includes(requestError.response?.status)) {
         dirtyRef.current = false;
@@ -165,10 +175,11 @@ export default function NoteEditor() {
         setSaveStatus('error');
       }
     });
-  }, [note?.title, note?.content, note?.icon, id], 500);
+  }, [note?.title, note?.content, note?.icon, id], 750);
 
   const updateNote = useCallback((patch) => {
     dirtyRef.current = true;
+    editVersionRef.current += 1;
     setSaveStatus('unsaved');
     setNote((current) => ({ ...current, ...patch }));
     setNotes((current) => current.map((item) => item._id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item));
@@ -210,13 +221,19 @@ export default function NoteEditor() {
   };
   const saveImmediately = useCallback(async () => {
     if (!note || !['owner', 'editor'].includes(note.accessRole) || saveStatus === 'saving') return;
+    const versionToSave = editVersionRef.current;
     setSaveStatus('saving');
     try {
       const payload = { title: note.title, content: note.content, icon: note.icon || '📝', saveReason: 'manual' };
       const { data } = await api.put(`/notes/${id}`, payload);
-      dirtyRef.current = false;
-      setNote((current) => ({ ...current, ...data, accessRole: current.accessRole }));
-      setSaveStatus('saved');
+      setNote((current) => current ? { ...current, updatedAt: data?.updatedAt || current.updatedAt } : current);
+      if (editVersionRef.current === versionToSave) {
+        dirtyRef.current = false;
+        setSaveStatus('saved');
+      } else {
+        dirtyRef.current = true;
+        setSaveStatus('unsaved');
+      }
     } catch (requestError) {
       if ([403, 404].includes(requestError.response?.status)) navigate('/dashboard', { replace: true });
       else setSaveStatus('error');

@@ -194,7 +194,6 @@ const updateNote = asyncHandler(async (req, res) => {
   req.app.get('io')?.to(`note:${note._id}`).emit('document-saved', {
     document: {
       title: note.title,
-      content: note.content,
       icon: note.icon,
       updatedAt: note.updatedAt,
     },
