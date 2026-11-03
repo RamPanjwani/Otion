@@ -22,12 +22,12 @@ const commentRoutes = require('./routes/commentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const { apiLimiter } = require('./middleware/security');
-const { configuredOrigins, corsOptions } = require('./config/cors');
+const { configuredOrigins, isOriginAllowed, corsOptions } = require('./config/cors');
 
 const app = express();
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: configuredOrigins(), credentials: true } });
+const io = new Server(server, { cors: { origin: (origin, callback) => callback(null, isOriginAllowed(origin)), credentials: true } });
 const presence = new Map();
 app.set('io', io);
 
