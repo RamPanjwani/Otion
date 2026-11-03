@@ -7,6 +7,7 @@ import AmbientBackground from '../components/AmbientBackground';
 import BrandMark from '../components/BrandMark';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Enter a valid email address'),
@@ -14,6 +15,7 @@ const loginSchema = z.object({
 });
 
 export default function Login() {
+  useDocumentTitle('Sign in');
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });

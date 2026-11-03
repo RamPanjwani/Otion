@@ -320,6 +320,92 @@ const deleteNote = asyncHandler(async (req, res) => {
   res.json({ message: 'Note permanently deleted' });
 });
 
+const emptyTrash = asyncHandler(async (req, res) => {
+  const notesToDelete = await Note.find({ user: req.user._id, isArchived: true });
+  const noteIds = notesToDelete.map((n) => n._id);
+
+  if (!noteIds.length) {
+    return res.json({ message: 'Trash is already empty', count: 0 });
+  }
+
+  await Promise.all(notesToDelete.map((note) => emitNoteRemoval(req, note)));
+  noteIds.forEach((id) => evictDocument(id));
+
+  await Promise.all([
+    SharePermission.deleteMany({ noteId: { $in: noteIds } }),
+    UserNotePreference.deleteMany({ note: { $in: noteIds } }),
+    CollaborationState.deleteMany({ note: { $in: noteIds } }),
+    CollaborationUpdate.deleteMany({ note: { $in: noteIds } }),
+    NoteRevision.deleteMany({ note: { $in: noteIds } }),
+    PublicShare.deleteMany({ note: { $in: noteIds } }),
+    Comment.deleteMany({ note: { $in: noteIds } }),
+    Notification.deleteMany({ note: { $in: noteIds } }),
+    Invitation.deleteMany({ note: { $in: noteIds } }),
+    Note.deleteMany({ _id: { $in: noteIds } }),
+  ]);
+
+  res.json({ message: 'Trash emptied permanently', count: noteIds.length });
+});
+
+const restoreAllTrash = asyncHandler(async (req, res) => {
+  const notesToRestore = await Note.find({ user: req.user._id, isArchived: true });
+  const noteIds = notesToRestore.map((n) => n._id);
+
+  if (!noteIds.length) {
+    return res.json({ message: 'No notes to restore', count: 0 });
+  }
+
+  await Note.updateMany({ _id: { $in: noteIds } }, { $set: { isArchived: false } });
+  notesToRestore.forEach((n) => { n.isArchived = false; });
+  await Promise.all(notesToRestore.map((note) => emitNoteSync(req, note)));
+
+  res.json({ message: 'All notes restored', count: noteIds.length });
+});
+
+const bulkDeleteNotes = asyncHandler(async (req, res) => {
+  const noteIds = req.body.noteIds;
+  const notesToDelete = await Note.find({ _id: { $in: noteIds }, user: req.user._id, isArchived: true });
+
+  if (notesToDelete.length !== noteIds.length) {
+    res.status(404);
+    throw new Error('One or more notes could not be found');
+  }
+
+  await Promise.all(notesToDelete.map((note) => emitNoteRemoval(req, note)));
+  noteIds.forEach((id) => evictDocument(id));
+
+  await Promise.all([
+    SharePermission.deleteMany({ noteId: { $in: noteIds } }),
+    UserNotePreference.deleteMany({ note: { $in: noteIds } }),
+    CollaborationState.deleteMany({ note: { $in: noteIds } }),
+    CollaborationUpdate.deleteMany({ note: { $in: noteIds } }),
+    NoteRevision.deleteMany({ note: { $in: noteIds } }),
+    PublicShare.deleteMany({ note: { $in: noteIds } }),
+    Comment.deleteMany({ note: { $in: noteIds } }),
+    Notification.deleteMany({ note: { $in: noteIds } }),
+    Invitation.deleteMany({ note: { $in: noteIds } }),
+    Note.deleteMany({ _id: { $in: noteIds } }),
+  ]);
+
+  res.json({ message: 'Notes permanently deleted', count: noteIds.length });
+});
+
+const bulkRestoreNotes = asyncHandler(async (req, res) => {
+  const noteIds = req.body.noteIds;
+  const notesToRestore = await Note.find({ _id: { $in: noteIds }, user: req.user._id, isArchived: true });
+
+  if (notesToRestore.length !== noteIds.length) {
+    res.status(404);
+    throw new Error('One or more notes could not be found');
+  }
+
+  await Note.updateMany({ _id: { $in: noteIds } }, { $set: { isArchived: false } });
+  notesToRestore.forEach((n) => { n.isArchived = false; });
+  await Promise.all(notesToRestore.map((note) => emitNoteSync(req, note)));
+
+  res.json({ message: 'Notes restored', count: noteIds.length });
+});
+
 module.exports = {
   listNotes,
   createNote,
@@ -336,5 +422,9 @@ module.exports = {
   archiveNotes,
   restoreNote: setArchived(false),
   deleteNote,
+  emptyTrash,
+  restoreAllTrash,
+  bulkDeleteNotes,
+  bulkRestoreNotes,
   requireNote,
 };

@@ -26,6 +26,7 @@ const makeYBlock = (block) => {
   map.set('id', String(block.id));
   map.set('type', block.type || 'paragraph');
   map.set('checked', Boolean(block.checked));
+  map.set('indent', Number(block.indent || 0));
   const text = new Y.Text();
   if (block.text) text.insert(0, block.text);
   (block.marks || []).forEach((mark) => {
@@ -39,7 +40,14 @@ const makeYBlock = (block) => {
 
 const readBlocks = (doc) => doc.getArray('blocks').toArray().map((block) => {
   const text = block.get('text') || new Y.Text();
-  const result = { id: block.get('id'), type: block.get('type') || 'paragraph', text: text.toString(), marks: marksFromText(text), checked: Boolean(block.get('checked')) };
+  const result = {
+    id: block.get('id'),
+    type: block.get('type') || 'paragraph',
+    text: text.toString(),
+    marks: marksFromText(text),
+    checked: Boolean(block.get('checked')),
+    indent: Number(block.get('indent') || 0),
+  };
   return result;
 });
 
@@ -91,6 +99,7 @@ const writeBlocks = (doc, nextBlocks) => {
       }
       map.set('type', block.type || 'paragraph');
       map.set('checked', Boolean(block.checked));
+      map.set('indent', Number(block.indent || 0));
       replaceTextDiff(map.get('text'), block.text || '');
     });
   }, LOCAL_ORIGIN);
@@ -111,6 +120,15 @@ export default function useCollaborativeNote(noteId, enabled, onContent) {
     if (!enabled) return undefined;
     const doc = new Y.Doc();
     docRef.current = doc;
+
+    // Load offline cached document if available
+    try {
+      const cached = localStorage.getItem(`otion_offline_doc_${noteId}`);
+      if (cached) {
+        Y.applyUpdate(doc, new Uint8Array(JSON.parse(cached)), LOCAL_ORIGIN);
+      }
+    } catch {}
+
     undoManagerRef.current = new Y.UndoManager(doc.getArray('blocks'), {
       trackedOrigins: new Set([LOCAL_ORIGIN]),
       captureTimeout: 500,
@@ -118,6 +136,11 @@ export default function useCollaborativeNote(noteId, enabled, onContent) {
 
     const handleDocumentUpdate = (update, origin) => {
       contentHandlerRef.current?.(readBlocks(doc), { local: origin === LOCAL_ORIGIN });
+      try {
+        const encoded = Array.from(Y.encodeStateAsUpdate(doc));
+        localStorage.setItem(`otion_offline_doc_${noteId}`, JSON.stringify(encoded));
+      } catch {}
+
       if (origin === LOCAL_ORIGIN && socket.connected) {
         socket.emit('collab-update', { noteId, update: Array.from(update) }, (result) => {
           if (!result?.ok) setSyncError('Your latest change could not be synchronized');

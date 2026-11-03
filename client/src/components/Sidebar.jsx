@@ -1,10 +1,11 @@
-import { FilePlus2, Home, LogOut, PanelLeft, Search, Settings, Star, Trash2 } from 'lucide-react';
+import { FilePlus2, Home, Keyboard, LogOut, PanelLeft, Search, Settings, Star, Trash2 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import useAuth from '../hooks/useAuth';
 import BrandMark from './BrandMark';
 import SearchCommand from './SearchCommand';
+import ShortcutsModal from './ShortcutsModal';
 
 const DEFAULT_NOTE_ICON = '📝';
 
@@ -13,6 +14,7 @@ export default function Sidebar({ notes = [], onCreated, onReordered }) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('otion_sidebar_collapsed') === 'true');
   const [creating, setCreating] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [draggedNoteId, setDraggedNoteId] = useState('');
   const [dropTargetId, setDropTargetId] = useState('');
   const [reorderError, setReorderError] = useState('');
@@ -95,10 +97,44 @@ export default function Sidebar({ notes = [], onCreated, onReordered }) {
         event.preventDefault();
         setCollapsed((current) => !current);
       }
+      if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+        event.preventDefault();
+        setShortcutsOpen((current) => !current);
+      }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
   }, []);
+
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (event) => {
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (event) => {
+      const deltaX = event.changedTouches[0].clientX - startX;
+      const deltaY = event.changedTouches[0].clientY - startY;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        if (!open && startX < 35 && deltaX > 60) {
+          setOpen(true);
+        } else if (open && deltaX < -60) {
+          setOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [open]);
 
   const renderNote = (note) => (
     <div
@@ -142,6 +178,10 @@ export default function Sidebar({ notes = [], onCreated, onReordered }) {
         </div>
 
         <div className="space-y-1 border-t border-line p-3">
+          <button type="button" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts" className={navClass({ isActive: false })}>
+            <Keyboard size={17} /> <span>Shortcuts</span>
+            <kbd className="ml-auto rounded border border-line bg-surface/60 px-1.5 py-0.5 text-[9px] text-muted">Ctrl /</kbd>
+          </button>
           <NavLink to="/trash" title="Trash" className={navClass}><Trash2 size={17} /> <span>Trash</span></NavLink>
           <NavLink to="/settings" title="Settings" className={navClass}><Settings size={17} /> <span>Settings</span></NavLink>
           <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface/70">
@@ -152,6 +192,7 @@ export default function Sidebar({ notes = [], onCreated, onReordered }) {
         </div>
       </aside>
       <SearchCommand open={searchOpen} onClose={closeSearch} notes={notes} onNavigate={() => setOpen(false)} />
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

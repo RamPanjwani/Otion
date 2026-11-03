@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import useAuth from '../hooks/useAuth';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 import { AuthShell, Field } from './Login';
 
 const registerSchema = z.object({
@@ -13,6 +14,7 @@ const registerSchema = z.object({
 }).refine((data) => data.password === data.confirmPassword, { path: ['confirmPassword'], message: 'Passwords do not match' });
 
 export default function Register() {
+  useDocumentTitle('Sign up');
   const { user, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

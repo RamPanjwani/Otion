@@ -1,7 +1,4 @@
 @import "tailwindcss";
-@source not "../LumaClone";
-@source not "../notion-clone";
-@source not "../stitch";
 
 @theme {
   --color-canvas: #fbfbfa;
@@ -107,6 +104,15 @@ select:focus-visible,
 .primary-action:active { box-shadow: none; }
 .secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--color-line); border-radius: 0.5rem; background: var(--color-surface); color: var(--color-ink); font-weight: 500; transition: background-color 150ms ease, border-color 150ms ease; }
 .secondary-action:hover { background: var(--color-panel); border-color: color-mix(in srgb, var(--color-muted) 35%, var(--color-line)); }
+.danger-action { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.5rem; background: #dc2626; color: #ffffff; font-weight: 600; transition: background-color 150ms ease, box-shadow 150ms ease; box-shadow: 0 1px 2px rgb(24 24 27 / 0.12); }
+.danger-action:hover { background: #b91c1c; box-shadow: 0 2px 5px rgb(24 24 27 / 0.16); }
+.danger-action:active { box-shadow: none; }
+.dark .danger-action { background: #dc2626; color: #ffffff; }
+.dark .danger-action:hover { background: #ef4444; }
+.danger-action-subtle { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--color-line); border-radius: 0.5rem; background: var(--color-surface); color: #dc2626; font-weight: 500; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+.danger-action-subtle:hover { background: rgb(254 242 242 / 0.75); border-color: rgb(252 165 165 / 0.65); color: #b91c1c; }
+.dark .danger-action-subtle { color: #f87171; }
+.dark .danger-action-subtle:hover { background: rgb(127 29 29 / 0.25); border-color: rgb(153 27 27 / 0.55); color: #fca5a5; }
 .icon-action { display: inline-grid; place-items: center; border-radius: 0.4rem; color: var(--color-muted); transition: color 140ms ease, background-color 140ms ease; }
 .icon-action:hover { color: var(--color-ink); background: var(--color-panel); }
 .field-control { width: 100%; border: 1px solid var(--color-line); border-radius: 0.5rem; background: var(--color-surface); color: var(--color-ink); transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
@@ -162,4 +168,25 @@ select:focus-visible,
 @media (max-width: 640px) {
   .otion-orb { filter: blur(72px); }
   .otion-orb-cyan, .otion-orb-violet, .otion-orb-pink { width: 85vw; }
+}
+
+@media print {
+  .workspace-sidebar,
+  .workspace-navbar,
+  .sidebar-open-button,
+  .notion-block-gutter,
+  .selection-toolbar,
+  .notion-mobile-block-menu {
+    display: none !important;
+  }
+  .app-shell {
+    padding-left: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  .note-canvas {
+    max-width: 100% !important;
+    padding: 1.5rem !important;
+    background: transparent !important;
+  }
 }

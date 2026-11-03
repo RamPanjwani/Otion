@@ -16,6 +16,9 @@ import useCollaborativeNote from '../hooks/useCollaborativeNote';
 import api from '../services/api';
 import { connectSocket, socket } from '../services/socket';
 import { getNoteStats } from '../utils/noteContent';
+import useToast from '../hooks/useToast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
+import { blocksToMarkdown, downloadMarkdownFile, markdownToBlocks } from '../utils/markdown';
 
 const DEFAULT_VIEW_SETTINGS = { smallText: false, fullWidth: false };
 
@@ -41,6 +44,7 @@ export default function NoteEditor() {
   const articleRef = useRef(null);
   const navigate = useNavigate();
   const noteStats = useMemo(() => getNoteStats(note?.content), [note?.content]);
+  useDocumentTitle(note?.title || 'Untitled note');
 
   const collaborative = useCollaborativeNote(id, Boolean(note?._id === id && user), useCallback((content, metadata) => {
     if (metadata?.local) {
@@ -249,11 +253,56 @@ export default function NoteEditor() {
   };
 
   const updateViewSetting = (key, value) => setViewSettings((current) => ({ ...current, [key]: value }));
+  const toast = useToast();
+
+  const handleExportMarkdown = () => {
+    if (!note) return;
+    const md = blocksToMarkdown(note.title, note.content || []);
+    downloadMarkdownFile(note.title || 'Untitled note', md);
+    toast.success('Markdown exported');
+  };
+
+  const handleExportPdf = () => {
+    window.print();
+  };
+
+  const handleImportMarkdown = async (file) => {
+    try {
+      const text = await file.text();
+      const parsedBlocks = markdownToBlocks(text);
+      updateNote({ content: parsedBlocks });
+      toast.success(`Imported ${file.name}`);
+    } catch {
+      toast.error('Unable to import markdown file');
+    }
+  };
 
   return (
     <div className="app-shell relative min-h-screen bg-canvas">
       <Sidebar notes={notes} onCreated={(created) => setNotes((current) => [created, ...current.filter((item) => item._id !== created._id)])} onReordered={setNotes} />
-      <Navbar title={note?.title || 'Note'} collaborators={presence} onShare={note?.accessRole === 'owner' ? () => setShareOpen(true) : undefined} onArchive={note?.accessRole === 'owner' ? archive : undefined} onSave={['owner', 'editor'].includes(note?.accessRole) ? saveImmediately : undefined} saveStatus={saveStatus} starred={Boolean(note?.isFavorite)} onToggleStar={toggleStar} onHistory={() => setHistoryOpen(true)} onUndo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.undo : undefined} onRedo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.redo : undefined} onComments={() => setCommentsOpen(true)} viewOptions={{ settings: viewSettings, onChange: updateViewSetting, onDuplicate: duplicateNote, stats: noteStats }} />
+      <Navbar
+        title={note?.title || 'Note'}
+        collaborators={presence}
+        onShare={note?.accessRole === 'owner' ? () => setShareOpen(true) : undefined}
+        onArchive={note?.accessRole === 'owner' ? archive : undefined}
+        onSave={['owner', 'editor'].includes(note?.accessRole) ? saveImmediately : undefined}
+        saveStatus={saveStatus}
+        starred={Boolean(note?.isFavorite)}
+        onToggleStar={toggleStar}
+        onHistory={() => setHistoryOpen(true)}
+        onUndo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.undo : undefined}
+        onRedo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.redo : undefined}
+        onComments={() => setCommentsOpen(true)}
+        viewOptions={{
+          settings: viewSettings,
+          onChange: updateViewSetting,
+          onDuplicate: duplicateNote,
+          onExportMarkdown: handleExportMarkdown,
+          onExportPdf: handleExportPdf,
+          onImportMarkdown: ['owner', 'editor'].includes(note?.accessRole) ? handleImportMarkdown : undefined,
+          stats: noteStats,
+        }}
+      />
       {error ? <div className="mx-auto max-w-2xl p-10 text-red-700">{error}</div> : !note || note._id !== id ? <Loading fullPage /> : note && <main className="relative pb-20">
         <article ref={articleRef} onPointerMove={handlePointerMove} className={`note-canvas relative mx-auto min-h-[calc(100vh-56px)] px-6 pb-20 pt-14 transition-[max-width,padding] sm:px-12 sm:pt-20 lg:px-16 ${viewSettings.fullWidth ? 'max-w-[1440px]' : 'max-w-[920px]'}`}>
           <button onClick={['owner', 'editor'].includes(note.accessRole) ? openNoteStyle : undefined} className="mb-3 rounded-lg text-5xl leading-none transition hover:bg-panel/70 sm:text-6xl" aria-label="Note emoji">{note.icon || '📝'}</button>

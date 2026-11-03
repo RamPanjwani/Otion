@@ -20,10 +20,11 @@ const commandItems = [
   { type: 'image', label: 'Image URL', hint: 'Embed an image from a URL', icon: Image },
 ];
 
-const makeBlock = (type = 'paragraph', text = '') => ({
+const makeBlock = (type = 'paragraph', text = '', indent = 0) => ({
   id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
   type,
   text,
+  indent: Math.max(0, Math.min(4, indent)),
   marks: [],
   checked: false,
 });
@@ -266,6 +267,13 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
         return;
       }
     }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const currentIndent = block.indent || 0;
+      const nextIndent = event.shiftKey ? Math.max(0, currentIndent - 1) : Math.min(4, currentIndent + 1);
+      patchBlock(block.id, { indent: nextIndent });
+      return;
+    }
     if ((event.metaKey || event.ctrlKey) && ['b', 'i', 'u', 'k'].includes(event.key.toLowerCase())) {
       event.preventDefault();
       captureSelection();
@@ -301,7 +309,7 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
       const offsets = selectionOffsets(event.currentTarget) || { start: block.text.length, end: block.text.length };
       const before = block.text.slice(0, offsets.start);
       const after = block.text.slice(offsets.end);
-      const nextBlock = makeBlock(listContinuationType(block.type), after);
+      const nextBlock = makeBlock(listContinuationType(block.type), after, block.indent || 0);
       nextBlock.marks = marksAfterSplit(block.marks || [], offsets.end);
       const next = blocksRef.current.map((item) => item.id === block.id ? { ...item, text: before, marks: marksBeforeSplit(item.marks || [], offsets.start) } : item);
       next.splice(index + 1, 0, nextBlock);
@@ -315,6 +323,11 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
     if (event.key === 'Backspace') {
       const offsets = selectionOffsets(event.currentTarget);
       if (!offsets || offsets.start !== offsets.end || offsets.start > 0) return;
+      if (block.indent > 0) {
+        event.preventDefault();
+        patchBlock(block.id, { indent: block.indent - 1 });
+        return;
+      }
       if (block.type !== 'paragraph') {
         event.preventDefault();
         transformBlock(block.id, 'paragraph');
@@ -392,7 +405,10 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
       key={block.id}
       data-block-type={block.type}
       className={`notion-block group relative flex min-h-8 items-start gap-2 rounded-sm ${dropTargetId === block.id && draggedBlockId !== block.id ? 'notion-block-drop-target' : ''}`}
-      style={{ '--block-control-offset': blockControlOffset(block.type) }}
+      style={{
+        '--block-control-offset': blockControlOffset(block.type),
+        marginLeft: block.indent ? `${block.indent * 1.5}rem` : undefined,
+      }}
       onDragOver={(event) => { if (!readOnly) { event.preventDefault(); setDropTargetId(block.id); } }}
       onDragLeave={() => setDropTargetId((current) => current === block.id ? null : current)}
       onDrop={(event) => { event.preventDefault(); reorderBlock(block.id); }}
@@ -430,7 +446,7 @@ function BlockActionMenu({ block, index, onTransform, onDuplicate, onDelete }) {
     <div className="grid grid-cols-2 gap-0.5">{transformItems.map(({ type, label, icon: Icon }) => <button key={type} type="button" onClick={() => onTransform(type)} className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-panel ${block.type === type ? 'bg-panel font-medium text-ink' : 'text-muted'}`}><Icon size={14} /><span className="truncate">{label}</span></button>)}</div>
     <div className="my-1 border-t border-line" />
     <button type="button" onClick={onDuplicate} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted transition hover:bg-panel hover:text-ink"><Copy size={15} /> Duplicate block</button>
-    <button type="button" onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"><Trash2 size={15} /> Delete block <span className="ml-auto text-[10px] text-muted">#{index + 1}</span></button>
+    <button type="button" onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"><Trash2 size={15} /> Delete block <span className="ml-auto text-[10px] text-muted">#{index + 1}</span></button>
   </div>;
 }
 
@@ -504,8 +520,14 @@ function marksAfterSplit(marks, offset) {
 }
 
 function numberedListIndex(blocks, index) {
+  const currentIndent = blocks[index]?.indent || 0;
   let value = 1;
-  for (let cursor = index - 1; cursor >= 0 && blocks[cursor].type === 'numbered'; cursor -= 1) value += 1;
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    if (blocks[cursor].type !== 'numbered') break;
+    const prevIndent = blocks[cursor].indent || 0;
+    if (prevIndent < currentIndent) break;
+    if (prevIndent === currentIndent) value += 1;
+  }
   return value;
 }
 

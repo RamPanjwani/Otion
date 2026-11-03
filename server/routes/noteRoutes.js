@@ -6,11 +6,19 @@ const {
   duplicateNote,
   reorderNotes,
   archiveNotes,
+  emptyTrash,
+  restoreAllTrash,
+  bulkDeleteNotes,
+  bulkRestoreNotes,
 } = require('../controllers/noteController');
 const { validate } = require('../middleware/validate');
 const { notes, revisions } = require('../validation/schemas');
 
 const router = express.Router();
+router.delete('/trash/empty', protect, emptyTrash);
+router.patch('/trash/restore-all', protect, restoreAllTrash);
+router.delete('/trash/delete-many', protect, validate({ body: notes.bulkArchive }), bulkDeleteNotes);
+router.patch('/trash/restore-many', protect, validate({ body: notes.bulkArchive }), bulkRestoreNotes);
 router.patch('/reorder', protect, validate({ body: notes.reorder }), reorderNotes);
 router.patch('/archive-many', protect, validate({ body: notes.bulkArchive }), archiveNotes);
 router.get('/:id', protect, validate({ params: notes.id }), getNote);
