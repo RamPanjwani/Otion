@@ -36,9 +36,17 @@ export default function useNotes({ archived = false } = {}) {
     connectSocket();
     const syncNote = ({ note }) => {
       setNotes((current) => {
+        const existing = current.find((item) => item._id === note._id);
+        const merged = existing ? {
+          ...existing,
+          ...note,
+          isFavorite: note.isFavorite ?? existing.isFavorite,
+          lastOpenedAt: note.lastOpenedAt ?? existing.lastOpenedAt,
+          sortOrder: note.sortOrder ?? existing.sortOrder,
+        } : note;
         const withoutNote = current.filter((item) => item._id !== note._id);
         if (Boolean(note.isArchived) !== archived) return withoutNote;
-        return [note, ...withoutNote].sort(compareNotes);
+        return [merged, ...withoutNote].sort(compareNotes);
       });
     };
     const reorderNotes = ({ noteIds }) => setNotes((current) => {

@@ -93,6 +93,13 @@ test('note authorization, sharing, public privacy, and socket revocation work en
   assert.ok(archivedTree.body.some((note) => note._id === noteId));
   assert.ok(!archivedTree.body.some((note) => note._id === child.body._id));
   await authenticated('patch', `/api/notes/${noteId}/restore`, owner.token).expect(200);
+  await authenticated('patch', '/api/notes/archive-many', owner.token)
+    .send({ noteIds: [noteId, child.body._id] })
+    .expect(200);
+  const bulkArchived = await authenticated('get', '/api/notes?archived=true', owner.token).expect(200);
+  assert.ok([noteId, child.body._id].every((id) => bulkArchived.body.some((note) => note._id === id)));
+  await authenticated('patch', `/api/notes/${noteId}/restore`, owner.token).expect(200);
+  await authenticated('patch', `/api/notes/${child.body._id}/restore`, owner.token).expect(200);
 
   const concealed = await authenticated('get', `/api/notes/${noteId}`, collaborator.token).expect(404);
   assert.equal(concealed.body.message, 'Note not found');

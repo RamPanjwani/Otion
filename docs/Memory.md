@@ -16,19 +16,22 @@ Last verified: 2026-11-03 (Asia/Calcutta)
 - [x] `Workspace`, `WorkspaceMembership`, and `UserNotePreference` models.
 - [x] One personal workspace per user; workspace switching and additional workspace creation are intentionally unavailable.
 - [x] Favorites are per-user; viewers can favorite notes without modifying shared note state.
-- [x] Recently opened timestamps and live note summaries.
+- [x] Recently opened timestamps with dashboard cards and compact sidebar navigation, plus live note summaries.
 - [x] Flat, user-specific note ordering with drag handles, move-up/move-down controls, realtime order synchronization, and no note hierarchy.
+- [x] Owner-only multi-select on the dashboard with a validated bulk move-to-Trash API; shared notes cannot be bulk deleted by collaborators.
+- [x] Collapsible desktop sidebar with a persisted icon-rail preference; mobile continues to use the full-width navigation drawer.
 - [x] Every note receives a default emoji; migration `013` backfilled existing notes and flattened legacy parent relationships.
 - [x] Note covers were removed from the UI, API contracts, persistence schema, revision snapshots, and existing Atlas data by migration `014`.
 - [x] Archiving/restoring affects only the selected note; permanent deletion removes only that note.
-- [x] Note duplication backend contract.
+- [x] Note duplication backend contract and editor action that copies the current in-memory note into the user's workspace.
 
 ## Editor and collaboration
 
 - [x] Stable-ID block editor with paragraphs, H1–H3, tasks, code, bullets, numbered lists, quote, callout, divider, image URL, and table/TSV blocks.
 - [x] Conflict-safe inline rich text using native Yjs text attributes: bold, italic, underline, strike, inline code, links, keyboard shortcuts, mark removal, safe URL rendering, and caret-preserving remote updates.
 - [x] External-URL image blocks; managed object/file uploads are intentionally excluded from the product.
-- [x] Slash commands, plain-text paste sanitization, heading shortcuts, emoji, covers, 500 ms autosave, and immediate manual save.
+- [x] Slash commands, plain-text paste sanitization, heading shortcuts, emoji, 500 ms autosave, immediate manual save, and `Ctrl/Cmd+S`.
+- [x] Distraction-free focus mode (`Ctrl/Cmd+Shift+F`), persisted small-text/full-width preferences, live word and character counts, and a scroll-aware H1–H3 table of contents.
 - [x] Yjs incremental CRDT updates replace whole-document broadcasts.
 - [x] Persisted snapshots plus incremental update log, restart recovery, compaction, reconnect state-vector merge, and JSON read-model compatibility.
 - [x] Socket JWT authentication and permission validation on every collaborative update.
@@ -100,7 +103,7 @@ Last verified: 2026-11-03 (Asia/Calcutta)
 - Route-level splitting: passing; the main production bundle is approximately 295 kB before gzip, with editor/settings/pages emitted as separate chunks.
 - Production dependency audit: no known production vulnerabilities at the last audit.
 - Docker/Nginx/Compose definitions: created; runtime validation remains pending because Docker is not installed in the implementation environment.
-- Existing Atlas data retained across workspace/CRDT/revision/search migrations; migration `013` added default emojis to 7 existing notes and found no remaining nested notes.
+- Existing Atlas data retained across workspace/CRDT/revision/search migrations; migration `013` added default emojis to 7 existing notes and found no remaining nested notes, while migration `014` removed legacy cover data from 9 notes and 9 revisions.
 
 ## Remaining roadmap
 

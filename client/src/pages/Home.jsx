@@ -36,7 +36,7 @@ export default function Home() {
             <Sparkles size={14} className="text-accent" /> A luminous space for focused teams
           </div>
           <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
-            Ideas move faster when everyone is <span className="text-brand-gradient">in the flow.</span>
+            Ideas move faster when everyone is in the flow.
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-muted sm:text-xl">
             Write, organize, and shape notes together in one calm workspace—without losing context to tabs, tools, or version chaos.
@@ -53,7 +53,6 @@ export default function Home() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, scale: 0.96, y: 26 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease }} className="relative mx-auto w-full max-w-[620px]">
-          <div className="absolute -inset-8 -z-10 rounded-[44px] bg-brand-gradient opacity-20 blur-3xl" />
           <div className="elevated-panel overflow-hidden rounded-[24px] p-2">
             <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
               <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div>
@@ -62,7 +61,7 @@ export default function Home() {
             </div>
             <div className="grid min-h-[430px] grid-cols-[150px_1fr] overflow-hidden rounded-b-[18px] bg-surface/75 sm:grid-cols-[180px_1fr]">
               <aside className="border-r border-line bg-panel/45 p-3">
-                <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-gradient text-[10px] font-bold text-white">O</span><span className="truncate text-xs font-semibold">Design team</span></div>
+                <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-[10px] font-bold text-surface">O</span><span className="truncate text-xs font-semibold">Design team</span></div>
                 <PreviewNav icon={<Sparkles size={13} />} label="Quick notes" />
                 <PreviewNav icon={<FileText size={13} />} label="Product brief" active />
                 <PreviewNav icon={<Users2 size={13} />} label="Research" />
@@ -106,8 +105,8 @@ function PreviewNav({ icon, label, active = false }) {
 }
 
 function Avatar({ letter, tone }) {
-  const tones = { violet: 'bg-violet-500', pink: 'bg-pink-500', cyan: 'bg-cyan-500' };
-  return <span className={`grid h-7 w-7 place-items-center rounded-full border-2 border-surface text-[9px] font-bold text-white ${tones[tone]}`}>{letter}</span>;
+  const tones = { violet: 'bg-ink text-surface', pink: 'bg-muted text-surface', cyan: 'bg-panel text-ink border border-line' };
+  return <span className={`grid h-7 w-7 place-items-center rounded-full border-2 border-surface text-[9px] font-bold ${tones[tone] || 'bg-ink text-surface'}`}>{letter}</span>;
 }
 
 function PreviewSection({ title, lines }) {

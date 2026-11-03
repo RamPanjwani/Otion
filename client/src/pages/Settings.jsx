@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Download, KeyRound, Save, Trash2, UserRound } from 'lucide-react';
-import AmbientBackground from '../components/AmbientBackground';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import Modal from '../components/Modal';
@@ -74,12 +73,11 @@ export default function Settings() {
   };
 
   return (
-    <div className="relative min-h-screen bg-canvas md:pl-60">
-      <AmbientBackground subtle />
+    <div className="app-shell relative min-h-screen bg-canvas">
       <Sidebar notes={notes} onCreated={(note) => setNotes((current) => [note, ...current])} onReordered={setNotes} />
       <Navbar title="Settings" />
-      <PageTransition as="main" className="mx-auto max-w-4xl space-y-6 px-6 py-10 sm:px-10 sm:py-14">
-        <div className="mb-9"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Personal</p><h1 className="mt-2 text-4xl font-semibold tracking-[-0.04em]">Account settings</h1><p className="mt-3 text-muted">Manage your profile, security, and Otion data.</p></div>
+      <PageTransition as="main" className="mx-auto max-w-3xl space-y-5 px-6 py-12 sm:px-10 sm:py-16">
+        <div className="mb-9"><h1 className="text-4xl font-bold tracking-[-0.04em]">Settings</h1><p className="mt-3 text-muted">Manage your profile, security, and Otion data.</p></div>
         {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
@@ -119,7 +117,7 @@ export default function Settings() {
 }
 
 function SettingsCard({ icon, title, description, children }) {
-  return <section className="surface-card rounded-[20px] p-6"><div className="mb-5 flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">{icon}</span><div><h2 className="font-semibold">{title}</h2><p className="mt-1 text-sm text-muted">{description}</p></div></div>{children}</section>;
+  return <section className="rounded-xl border border-line bg-surface p-6"><div className="mb-5 flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-panel text-muted">{icon}</span><div><h2 className="font-semibold">{title}</h2><p className="mt-1 text-sm text-muted">{description}</p></div></div>{children}</section>;
 }
 
 function SettingField({ label, children }) {

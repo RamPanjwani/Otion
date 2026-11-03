@@ -5,12 +5,14 @@ const {
   listRevisions, createRevision, restoreRevision,
   duplicateNote,
   reorderNotes,
+  archiveNotes,
 } = require('../controllers/noteController');
 const { validate } = require('../middleware/validate');
 const { notes, revisions } = require('../validation/schemas');
 
 const router = express.Router();
 router.patch('/reorder', protect, validate({ body: notes.reorder }), reorderNotes);
+router.patch('/archive-many', protect, validate({ body: notes.bulkArchive }), archiveNotes);
 router.get('/:id', protect, validate({ params: notes.id }), getNote);
 router.use(protect);
 router.patch('/:id/preferences', validate({ params: notes.id, body: notes.preferences }), updatePreference);

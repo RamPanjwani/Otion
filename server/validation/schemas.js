@@ -67,6 +67,9 @@ const notes = {
   reorder: z.object({
     noteIds: z.array(objectId).min(1).max(10_000).refine((ids) => new Set(ids).size === ids.length, 'Note identifiers must be unique'),
   }),
+  bulkArchive: z.object({
+    noteIds: z.array(objectId).min(1).max(500).refine((ids) => new Set(ids).size === ids.length, 'Note identifiers must be unique'),
+  }),
 };
 
 const revisions = {

@@ -264,6 +264,23 @@ const setArchived = (isArchived) => asyncHandler(async (req, res) => {
   res.json(note);
 });
 
+const archiveNotes = asyncHandler(async (req, res) => {
+  const noteIds = req.body.noteIds;
+  const ownedNotes = await Note.find({
+    _id: { $in: noteIds },
+    user: req.user._id,
+    isArchived: false,
+  });
+  if (ownedNotes.length !== noteIds.length) {
+    res.status(404);
+    throw new Error('One or more notes could not be found');
+  }
+  await Note.updateMany({ _id: { $in: noteIds } }, { $set: { isArchived: true } });
+  ownedNotes.forEach((note) => { note.isArchived = true; });
+  await Promise.all(ownedNotes.map((note) => emitNoteSync(req, note)));
+  res.json({ noteIds });
+});
+
 const duplicateNote = asyncHandler(async (req, res) => {
   const { note } = await requireNote(req.params.id, req.user._id, res, ['owner', 'editor', 'commenter', 'viewer'], true);
   const membership = await requireWorkspaceMembership(note.workspace, req.user._id, ['owner', 'admin', 'member']);
@@ -316,6 +333,7 @@ module.exports = {
   duplicateNote,
   reorderNotes,
   archiveNote: setArchived(true),
+  archiveNotes,
   restoreNote: setArchived(false),
   deleteNote,
   requireNote,

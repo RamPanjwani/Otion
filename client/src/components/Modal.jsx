@@ -36,11 +36,11 @@ export default function Modal({ open, onClose, title, children }) {
 
   return (
     <AnimatePresence>
-      {open && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-4 backdrop-blur-md" onMouseDown={onClose}>
-        <motion.section initial={{ opacity: 0, scale: 0.97, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 8 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="elevated-panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[22px]" onMouseDown={(event) => event.stopPropagation()}>
-          <header className="flex items-center justify-between border-b border-line px-6 py-5">
-            <h2 id={titleId} className="text-xl font-semibold tracking-[-0.025em]">{title}</h2>
-            <button type="button" onClick={onClose} className="icon-action h-9 w-9" aria-label="Close modal"><X size={19} /></button>
+      {open && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 p-4 backdrop-blur-[2px]" onMouseDown={onClose}>
+        <motion.section initial={{ opacity: 0, scale: 0.985, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.99, y: 5 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="elevated-panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl" onMouseDown={(event) => event.stopPropagation()}>
+          <header className="flex items-center justify-between border-b border-line px-5 py-4">
+            <h2 id={titleId} className="text-base font-semibold tracking-[-0.015em]">{title}</h2>
+            <button type="button" onClick={onClose} className="icon-action h-8 w-8" aria-label="Close modal"><X size={17} /></button>
           </header>
           {children}
         </motion.section>

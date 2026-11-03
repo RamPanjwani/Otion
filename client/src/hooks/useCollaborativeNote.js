@@ -63,16 +63,31 @@ const replaceTextDiff = (target, nextValue) => {
 const writeBlocks = (doc, nextBlocks) => {
   const root = doc.getArray('blocks');
   doc.transact(() => {
-    const wanted = new Set(nextBlocks.map((block) => block.id));
+    const currentBlocks = root.toArray();
+    const currentIds = currentBlocks.map((block) => block.get('id'));
+    const nextIds = nextBlocks.map((block) => block.id);
+    const nextIdSet = new Set(nextIds);
+    const sameBlocks = currentIds.length === nextIds.length && currentIds.every((id) => nextIdSet.has(id));
+    const orderChanged = sameBlocks && currentIds.some((id, index) => id !== nextIds[index]);
+
+    if (orderChanged) {
+      root.delete(0, root.length);
+      root.insert(0, nextBlocks.map(makeYBlock));
+      return;
+    }
+
+    const wanted = nextIdSet;
     for (let index = root.length - 1; index >= 0; index -= 1) {
       if (!wanted.has(root.get(index).get('id'))) root.delete(index, 1);
     }
 
+    const existingById = new Map(currentBlocks.map((block) => [block.get('id'), block]));
     nextBlocks.forEach((block, index) => {
-      let map = root.toArray().find((candidate) => candidate.get('id') === block.id);
+      let map = existingById.get(block.id);
       if (!map) {
         map = makeYBlock(block);
         root.insert(Math.min(index, root.length), [map]);
+        existingById.set(block.id, map);
       }
       map.set('type', block.type || 'paragraph');
       map.set('checked', Boolean(block.checked));

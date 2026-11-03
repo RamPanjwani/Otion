@@ -1,24 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bold, CheckSquare, Code2, Heading1, Heading2, Heading3, Image, Italic, Link2, List,
-  ListOrdered, MessageSquareQuote, Minus, RemoveFormatting, Sparkles, Strikethrough,
-  Table2, Text, Underline,
+  Bold, CheckSquare, Code2, Copy, GripVertical, Heading1, Heading2, Heading3, Image,
+  Italic, Link2, List, ListOrdered, MessageSquareQuote, Minus, MoreHorizontal, Plus, RemoveFormatting,
+  Sparkles, Strikethrough, Text, Trash2, Underline,
 } from 'lucide-react';
 
 const commandItems = [
-  { type: 'paragraph', label: 'Text', icon: Text },
-  { type: 'h1', label: 'Heading 1', icon: Heading1 },
-  { type: 'h2', label: 'Heading 2', icon: Heading2 },
-  { type: 'h3', label: 'Heading 3', icon: Heading3 },
-  { type: 'task', label: 'Task list', icon: CheckSquare },
-  { type: 'bullet', label: 'Bulleted list', icon: List },
-  { type: 'numbered', label: 'Numbered list', icon: ListOrdered },
-  { type: 'quote', label: 'Quote', icon: MessageSquareQuote },
-  { type: 'callout', label: 'Callout', icon: Sparkles },
-  { type: 'code', label: 'Code block', icon: Code2 },
-  { type: 'divider', label: 'Divider', icon: Minus },
-  { type: 'image', label: 'Image URL', icon: Image },
-  { type: 'table', label: 'Table (tab separated)', icon: Table2 },
+  { type: 'paragraph', label: 'Text', hint: 'Plain text block', icon: Text },
+  { type: 'h1', label: 'Heading 1', hint: 'Large section heading', icon: Heading1 },
+  { type: 'h2', label: 'Heading 2', hint: 'Medium section heading', icon: Heading2 },
+  { type: 'h3', label: 'Heading 3', hint: 'Small section heading', icon: Heading3 },
+  { type: 'task', label: 'Task list', hint: 'Track work with a checkbox', icon: CheckSquare },
+  { type: 'bullet', label: 'Bulleted list', hint: 'Create a simple list', icon: List },
+  { type: 'numbered', label: 'Numbered list', hint: 'Create an ordered list', icon: ListOrdered },
+  { type: 'quote', label: 'Quote', hint: 'Capture a quotation', icon: MessageSquareQuote },
+  { type: 'callout', label: 'Callout', hint: 'Highlight important information', icon: Sparkles },
+  { type: 'code', label: 'Code block', hint: 'Write formatted code', icon: Code2 },
+  { type: 'divider', label: 'Divider', hint: 'Separate sections', icon: Minus },
+  { type: 'image', label: 'Image URL', hint: 'Embed an image from a URL', icon: Image },
 ];
 
 const makeBlock = (type = 'paragraph', text = '') => ({
@@ -30,20 +29,19 @@ const makeBlock = (type = 'paragraph', text = '') => ({
 });
 
 const blockStyles = {
-  h1: 'text-3xl font-bold leading-tight mt-8 mb-3',
-  h2: 'text-2xl font-semibold leading-tight mt-7 mb-2',
-  h3: 'text-xl font-semibold leading-tight mt-6 mb-2',
-  paragraph: 'text-[15px] leading-7',
-  code: 'my-3 rounded-xl border border-line bg-panel p-4 font-mono text-sm leading-6 whitespace-pre-wrap',
+  h1: 'mt-8 mb-2 text-[2rem] font-bold leading-tight tracking-[-0.025em]',
+  h2: 'mt-7 mb-2 text-[1.55rem] font-semibold leading-tight tracking-[-0.02em]',
+  h3: 'mt-6 mb-1 text-xl font-semibold leading-tight',
+  paragraph: 'text-[16px] leading-7',
+  code: 'my-3 rounded-lg border border-line bg-panel px-4 py-3 font-mono text-sm leading-6 whitespace-pre-wrap',
   task: 'text-[15px] leading-7',
   bullet: 'text-[15px] leading-7',
   numbered: 'text-[15px] leading-7',
-  quote: 'my-3 border-l-4 border-ink/25 pl-4 text-[15px] italic leading-7 text-muted',
-  callout: 'my-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[15px] leading-7 dark:border-amber-900 dark:bg-amber-950/30',
-  table: 'surface-card my-3 rounded-xl p-3 font-mono text-sm leading-7 whitespace-pre-wrap',
+  quote: 'my-3 border-l-3 border-ink/30 pl-4 text-[16px] italic leading-7 text-muted',
+  callout: 'my-3 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-[15px] leading-7 dark:border-amber-900 dark:bg-amber-950/30',
 };
 
-export default function Editor({ value = [], onChange, onFormat, readOnly = false }) {
+export default function Editor({ value = [], onChange, onFormat, readOnly = false, smallText = false }) {
   const blocks = useMemo(() => (value.length ? value : [makeBlock()]), [value]);
   const blocksRef = useRef(blocks);
   const rootRef = useRef(null);
@@ -52,9 +50,20 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
   const [selectionRanges, setSelectionRanges] = useState([]);
   const [toolbarPosition, setToolbarPosition] = useState(null);
   const [menuBlockId, setMenuBlockId] = useState(null);
+  const [menuIndex, setMenuIndex] = useState(0);
+  const [slashQuery, setSlashQuery] = useState('');
+  const [blockMenuId, setBlockMenuId] = useState(null);
+  const [draggedBlockId, setDraggedBlockId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
   const [editorError, setEditorError] = useState('');
+
+  const visibleCommands = useMemo(() => {
+    const query = slashQuery.trim().toLowerCase();
+    if (!query) return commandItems;
+    return commandItems.filter((item) => `${item.label} ${item.hint} ${item.type}`.toLowerCase().includes(query));
+  }, [slashQuery]);
 
   useEffect(() => { blocksRef.current = blocks; }, [blocks]);
 
@@ -109,6 +118,15 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
     return () => document.removeEventListener('selectionchange', captureSelection);
   }, [captureSelection]);
 
+  useEffect(() => {
+    if (!blockMenuId) return undefined;
+    const closeMenu = (event) => {
+      if (!event.target.closest('[data-block-menu]')) setBlockMenuId(null);
+    };
+    document.addEventListener('pointerdown', closeMenu);
+    return () => document.removeEventListener('pointerdown', closeMenu);
+  }, [blockMenuId]);
+
   const attributeActive = (attribute) => selectionRanges.length > 0 && selectionRanges.every((range) => {
     const block = blocks.find((item) => item.id === range.blockId);
     let coveredUntil = range.from;
@@ -144,13 +162,110 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
     onFormat?.(selectionRef.current, { bold: null, italic: null, underline: null, strike: null, code: null, link: null });
   };
 
+  const insertBlockAfter = (index, openCommands = false) => {
+    const block = makeBlock();
+    const next = [...blocksRef.current];
+    next.splice(index + 1, 0, block);
+    commit(next);
+    setBlockMenuId(null);
+    if (openCommands) {
+      setMenuBlockId(block.id);
+      setSlashQuery('');
+      setMenuIndex(0);
+    }
+    window.setTimeout(() => focusBlockAtOffset(rootRef.current, block.id, 0), 0);
+  };
+
+  const duplicateBlock = (block, index) => {
+    const duplicate = { ...block, id: makeBlock().id, marks: (block.marks || []).map((mark) => ({ ...mark, attributes: { ...mark.attributes } })) };
+    const next = [...blocksRef.current];
+    next.splice(index + 1, 0, duplicate);
+    commit(next);
+    setBlockMenuId(null);
+    window.setTimeout(() => focusBlockAtOffset(rootRef.current, duplicate.id, duplicate.text.length), 0);
+  };
+
+  const deleteBlock = (block, index) => {
+    if (blocksRef.current.length === 1) {
+      commit([{ ...block, type: 'paragraph', text: '', marks: [], checked: false }]);
+      window.setTimeout(() => focusBlockAtOffset(rootRef.current, block.id, 0), 0);
+    } else {
+      const next = blocksRef.current.filter((item) => item.id !== block.id);
+      commit(next);
+      window.setTimeout(() => focusNearestBlock(rootRef.current, next, Math.min(index, next.length - 1)), 0);
+    }
+    setBlockMenuId(null);
+  };
+
+  const reorderBlock = (targetId) => {
+    if (!draggedBlockId || draggedBlockId === targetId) return;
+    const next = [...blocksRef.current];
+    const from = next.findIndex((block) => block.id === draggedBlockId);
+    if (from < 0) return;
+    const [moved] = next.splice(from, 1);
+    const to = next.findIndex((block) => block.id === targetId);
+    if (to < 0) return;
+    next.splice(to, 0, moved);
+    commit(next);
+    setDraggedBlockId(null);
+    setDropTargetId(null);
+  };
+
+  const transformBlock = (blockId, type, clearText = false) => {
+    const next = blocksRef.current.map((block) => block.id === blockId ? {
+      ...block,
+      type,
+      text: clearText ? '' : block.text,
+      marks: clearText ? [] : block.marks,
+      checked: type === 'task' ? Boolean(block.checked) : false,
+    } : block);
+    commit(next);
+    setBlockMenuId(null);
+    setMenuBlockId(null);
+  };
+
   const handleInput = (block, event) => {
     const text = event.currentTarget.textContent || '';
+    const shortcutType = markdownShortcut(text);
+    if (shortcutType) {
+      event.currentTarget.textContent = '';
+      transformBlock(block.id, shortcutType, true);
+      return;
+    }
     patchBlock(block.id, { text });
-    setMenuBlockId(text === '/' ? block.id : null);
+    if (text.startsWith('/') && !text.includes(' ')) {
+      setMenuBlockId(block.id);
+      setSlashQuery(text.slice(1));
+      setMenuIndex(0);
+    } else {
+      setMenuBlockId(null);
+      setSlashQuery('');
+    }
   };
 
   const handleKeyDown = (block, index, event) => {
+    if (menuBlockId === block.id) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (visibleCommands.length) setMenuIndex((current) => (current + 1) % visibleCommands.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (visibleCommands.length) setMenuIndex((current) => (current - 1 + visibleCommands.length) % visibleCommands.length);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMenuBlockId(null);
+        return;
+      }
+      if (event.key === 'Enter' && visibleCommands[menuIndex]) {
+        event.preventDefault();
+        setType(block.id, visibleCommands[menuIndex].type);
+        return;
+      }
+    }
     if ((event.metaKey || event.ctrlKey) && ['b', 'i', 'u', 'k'].includes(event.key.toLowerCase())) {
       event.preventDefault();
       captureSelection();
@@ -171,16 +286,80 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
     }
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      const next = [...blocks];
-      next.splice(index + 1, 0, makeBlock());
+      if (['bullet', 'numbered', 'task'].includes(block.type) && !block.text) {
+        transformBlock(block.id, 'paragraph');
+        return;
+      }
+      if (block.text === '---') {
+        const nextBlock = makeBlock();
+        const next = blocksRef.current.map((item) => item.id === block.id ? { ...item, type: 'divider', text: '', marks: [] } : item);
+        next.splice(index + 1, 0, nextBlock);
+        commit(next);
+        window.setTimeout(() => focusBlockAtOffset(rootRef.current, nextBlock.id, 0), 0);
+        return;
+      }
+      const offsets = selectionOffsets(event.currentTarget) || { start: block.text.length, end: block.text.length };
+      const before = block.text.slice(0, offsets.start);
+      const after = block.text.slice(offsets.end);
+      const nextBlock = makeBlock(listContinuationType(block.type), after);
+      nextBlock.marks = marksAfterSplit(block.marks || [], offsets.end);
+      const next = blocksRef.current.map((item) => item.id === block.id ? { ...item, text: before, marks: marksBeforeSplit(item.marks || [], offsets.start) } : item);
+      next.splice(index + 1, 0, nextBlock);
       commit(next);
       setMenuBlockId(null);
-      window.setTimeout(() => rootRef.current?.querySelector(`[data-block-index="${index + 1}"]`)?.focus(), 0);
+      setSlashQuery('');
+      window.setTimeout(() => focusBlockAtOffset(rootRef.current, nextBlock.id, 0), 0);
+      return;
     }
-    if (event.key === 'Backspace' && !block.text && blocks.length > 1) {
+
+    if (event.key === 'Backspace') {
+      const offsets = selectionOffsets(event.currentTarget);
+      if (!offsets || offsets.start !== offsets.end || offsets.start > 0) return;
+      if (block.type !== 'paragraph') {
+        event.preventDefault();
+        transformBlock(block.id, 'paragraph');
+        return;
+      }
+      if (index === 0) return;
       event.preventDefault();
-      commit(blocks.filter((item) => item.id !== block.id));
-      window.setTimeout(() => rootRef.current?.querySelector(`[data-block-index="${Math.max(0, index - 1)}"]`)?.focus(), 0);
+      const previous = blocksRef.current[index - 1];
+      if (previous.type === 'divider') {
+        commit(blocksRef.current.filter((item) => item.id !== previous.id));
+        window.setTimeout(() => focusBlockAtOffset(rootRef.current, block.id, 0), 0);
+        return;
+      }
+      const boundary = previous.text.length;
+      const mergedMarks = [
+        ...(previous.marks || []),
+        ...(block.marks || []).map((mark) => ({ ...mark, from: mark.from + boundary, to: mark.to + boundary })),
+      ];
+      const next = blocksRef.current
+        .filter((item) => item.id !== block.id)
+        .map((item) => item.id === previous.id ? { ...item, text: previous.text + block.text, marks: mergedMarks } : item);
+      commit(next);
+      window.setTimeout(() => focusBlockAtOffset(rootRef.current, previous.id, boundary), 0);
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      const offsets = selectionOffsets(event.currentTarget);
+      if (!offsets || offsets.start !== offsets.end || offsets.end < block.text.length || index >= blocksRef.current.length - 1) return;
+      event.preventDefault();
+      const following = blocksRef.current[index + 1];
+      if (following.type === 'divider') {
+        commit(blocksRef.current.filter((item) => item.id !== following.id));
+        return;
+      }
+      const boundary = block.text.length;
+      const mergedMarks = [
+        ...(block.marks || []),
+        ...(following.marks || []).map((mark) => ({ ...mark, from: mark.from + boundary, to: mark.to + boundary })),
+      ];
+      const next = blocksRef.current
+        .filter((item) => item.id !== following.id)
+        .map((item) => item.id === block.id ? { ...item, text: block.text + following.text, marks: mergedMarks } : item);
+      commit(next);
+      window.setTimeout(() => focusBlockAtOffset(rootRef.current, block.id, boundary), 0);
     }
   };
 
@@ -193,12 +372,13 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
       next.splice(index + 1, 0, makeBlock());
       commit(next);
       window.setTimeout(() => rootRef.current?.querySelector(`[data-block-index="${index + 1}"]`)?.focus(), 0);
-    } else patchBlock(blockId, { type, text: '', marks: [] });
+    } else transformBlock(blockId, type, true);
     setMenuBlockId(null);
+    setSlashQuery('');
   };
 
-  return <div ref={rootRef} className="relative pb-56">
-    {!readOnly && selectionRanges.length > 0 && toolbarPosition && <div ref={formattingRef} className="elevated-panel fixed z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 rounded-2xl p-1.5" style={{ left: toolbarPosition.left, top: toolbarPosition.top }} role="toolbar" aria-label="Format selected text">
+  return <div ref={rootRef} className={`relative pb-56 ${smallText ? 'editor-density-small' : ''}`}>
+    {!readOnly && selectionRanges.length > 0 && toolbarPosition && <div ref={formattingRef} className="selection-toolbar fixed z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 rounded-lg p-1" style={{ left: toolbarPosition.left, top: toolbarPosition.top }} role="toolbar" aria-label="Format selected text">
       <FormatButton label="Bold" active={attributeActive('bold')} onClick={() => applyFormat('bold')}><Bold size={16} /></FormatButton>
       <FormatButton label="Italic" active={attributeActive('italic')} onClick={() => applyFormat('italic')}><Italic size={16} /></FormatButton>
       <FormatButton label="Underline" active={attributeActive('underline')} onClick={() => applyFormat('underline')}><Underline size={16} /></FormatButton>
@@ -208,22 +388,50 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
       <FormatButton label="Clear formatting" onClick={clearFormatting}><RemoveFormatting size={16} /></FormatButton>
     </div>}
     {editorError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{editorError}</p>}
-    <div className="space-y-1">{blocks.map((block, index) => <div key={block.id} className="group relative flex items-start gap-2">
-      {block.type === 'task' && <input type="checkbox" checked={Boolean(block.checked)} disabled={readOnly} onChange={(event) => patchBlock(block.id, { checked: event.target.checked })} className="mt-1.5 h-4 w-4 accent-ink" />}
-      {block.type === 'bullet' && <span className="mt-1 text-muted">•</span>}
-      {block.type === 'numbered' && <span className="mt-1 min-w-5 text-right text-muted">{index + 1}.</span>}
-      {block.type === 'callout' && <span className="mt-3">💡</span>}
+    <div className="space-y-0.5">{blocks.map((block, index) => <div
+      key={block.id}
+      data-block-type={block.type}
+      className={`notion-block group relative flex min-h-8 items-start gap-2 rounded-sm ${dropTargetId === block.id && draggedBlockId !== block.id ? 'notion-block-drop-target' : ''}`}
+      style={{ '--block-control-offset': blockControlOffset(block.type) }}
+      onDragOver={(event) => { if (!readOnly) { event.preventDefault(); setDropTargetId(block.id); } }}
+      onDragLeave={() => setDropTargetId((current) => current === block.id ? null : current)}
+      onDrop={(event) => { event.preventDefault(); reorderBlock(block.id); }}
+    >
+      {!readOnly && <div className="notion-block-gutter absolute -left-14 hidden h-8 items-center gap-0.5 sm:flex" data-block-menu>
+        <button type="button" onClick={() => insertBlockAfter(index, true)} className="notion-gutter-button" aria-label="Add block below" title="Add block"><Plus size={16} /></button>
+        <button type="button" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedBlockId(block.id); setBlockMenuId(null); }} onDragEnd={() => { setDraggedBlockId(null); setDropTargetId(null); }} onClick={() => setBlockMenuId((current) => current === block.id ? null : block.id)} className="notion-gutter-button cursor-grab active:cursor-grabbing" aria-label="Drag or open block actions" aria-expanded={blockMenuId === block.id} title="Drag to move, click for actions"><GripVertical size={16} /></button>
+      </div>}
+      {!readOnly && <button type="button" data-block-menu onClick={() => setBlockMenuId((current) => current === block.id ? null : block.id)} className="notion-mobile-block-menu notion-gutter-button absolute -right-7 sm:hidden" aria-label="Open block actions" aria-expanded={blockMenuId === block.id}><MoreHorizontal size={16} /></button>}
+
+      {block.type === 'task' && <input type="checkbox" checked={Boolean(block.checked)} disabled={readOnly} onChange={(event) => patchBlock(block.id, { checked: event.target.checked })} className="mt-1.5 h-4 w-4 shrink-0 accent-ink" />}
+      {block.type === 'bullet' && <span className="mt-0.5 w-4 shrink-0 text-center text-ink">•</span>}
+      {block.type === 'numbered' && <span className="mt-0.5 min-w-5 shrink-0 text-right text-muted">{numberedListIndex(blocks, index)}.</span>}
+      {block.type === 'callout' && <span className="mt-3 shrink-0">💡</span>}
       {block.type === 'divider' ? <hr data-block-id={block.id} className="my-6 flex-1 border-line" /> : <div className="min-w-0 flex-1">
-        {block.type === 'image' && /^https?:\/\//i.test(block.text) && <img src={block.text} alt="Note image" className="mt-2 max-h-96 w-full rounded-xl object-contain" />}
+        {block.type === 'image' && /^https?:\/\//i.test(block.text) && <img src={block.text} alt="Note image" className="mb-2 mt-2 max-h-96 w-full rounded-lg border border-line object-contain" />}
         <EditableBlock text={block.text} marks={block.marks || []} readOnly={readOnly} blockId={block.id} data-block-index={index} placeholder={block.type === 'image' ? 'Paste an image URL…' : index === blocks.length - 1 ? "Type '/' for commands" : ''} className={`editor-block min-h-7 w-full outline-none ${blockStyles[block.type] || 'text-[15px] leading-7'} ${block.checked ? 'text-muted line-through' : ''}`} onInput={(event) => handleInput(block, event)} onKeyDown={(event) => handleKeyDown(block, index, event)} onPaste={insertPlainText} />
       </div>}
-      {menuBlockId === block.id && <div className="elevated-panel absolute left-0 top-9 z-30 max-h-96 w-64 overflow-y-auto rounded-2xl p-2"><p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-muted">Blocks</p>{commandItems.map(({ type, label, icon: Icon }) => <button key={type} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setType(block.id, type)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-muted transition hover:bg-panel hover:text-ink"><Icon size={17} />{label}</button>)}</div>}
+
+      {blockMenuId === block.id && <BlockActionMenu block={block} index={index} onTransform={(type) => transformBlock(block.id, type)} onDuplicate={() => duplicateBlock(block, index)} onDelete={() => deleteBlock(block, index)} />}
+
+      {menuBlockId === block.id && <div className="slash-command-menu absolute left-0 top-9 z-30 max-h-[min(440px,55vh)] w-72 overflow-y-auto rounded-xl p-1.5"><p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Basic blocks</p>{visibleCommands.length ? visibleCommands.map(({ type, label, hint, icon: Icon }, commandIndex) => <button key={type} type="button" onMouseEnter={() => setMenuIndex(commandIndex)} onMouseDown={(event) => event.preventDefault()} onClick={() => setType(block.id, type)} className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition ${menuIndex === commandIndex ? 'bg-panel text-ink' : 'text-muted hover:bg-panel hover:text-ink'}`}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-surface text-ink"><Icon size={17} /></span><span className="min-w-0"><span className="block text-sm font-medium text-ink">{label}</span><span className="block truncate text-xs text-muted">{hint}</span></span></button>) : <p className="px-3 py-8 text-center text-sm text-muted">No matching blocks</p>}</div>}
     </div>)}</div>
   </div>;
 }
 
 function FormatButton({ label, active = false, onClick, children }) {
   return <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClick} aria-label={label} aria-pressed={active} className={`icon-action h-8 w-8 ${active ? 'bg-accent-soft text-accent' : ''}`}>{children}</button>;
+}
+
+function BlockActionMenu({ block, index, onTransform, onDuplicate, onDelete }) {
+  const transformItems = commandItems.filter((item) => ['paragraph', 'h1', 'h2', 'h3', 'task', 'bullet', 'numbered', 'quote', 'callout', 'code'].includes(item.type));
+  return <div data-block-menu className="block-action-menu absolute left-0 z-40 w-64 rounded-xl p-1.5">
+    <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Turn into</p>
+    <div className="grid grid-cols-2 gap-0.5">{transformItems.map(({ type, label, icon: Icon }) => <button key={type} type="button" onClick={() => onTransform(type)} className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-panel ${block.type === type ? 'bg-panel font-medium text-ink' : 'text-muted'}`}><Icon size={14} /><span className="truncate">{label}</span></button>)}</div>
+    <div className="my-1 border-t border-line" />
+    <button type="button" onClick={onDuplicate} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-muted transition hover:bg-panel hover:text-ink"><Copy size={15} /> Duplicate block</button>
+    <button type="button" onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"><Trash2 size={15} /> Delete block <span className="ml-auto text-[10px] text-muted">#{index + 1}</span></button>
+  </div>;
 }
 
 function EditableBlock({ text, marks, readOnly, blockId, placeholder, className, onInput, onKeyDown, ...attributes }) {
@@ -241,6 +449,72 @@ function EditableBlock({ text, marks, readOnly, blockId, placeholder, className,
   }, [marks, text]);
 
   return <div {...attributes} ref={elementRef} contentEditable={!readOnly} suppressContentEditableWarning data-editable-block="true" data-block-id={blockId} data-placeholder={placeholder} className={className} onInput={onInput} onKeyDown={onKeyDown} />;
+}
+
+function focusBlockAtOffset(root, blockId, offset) {
+  if (!root) return;
+  const element = [...root.querySelectorAll('[data-editable-block="true"]')].find((candidate) => candidate.dataset.blockId === blockId);
+  if (!element) return;
+  element.focus();
+  const point = pointAtOffset(element, Math.max(0, Math.min(element.textContent.length, offset)));
+  const range = document.createRange();
+  range.setStart(point.node, point.offset);
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function focusNearestBlock(root, blocks, index) {
+  const block = blocks[index] || blocks[index - 1];
+  if (block) focusBlockAtOffset(root, block.id, block.text?.length || 0);
+}
+
+function markdownShortcut(text) {
+  return ({
+    '# ': 'h1',
+    '## ': 'h2',
+    '### ': 'h3',
+    '- ': 'bullet',
+    '* ': 'bullet',
+    '1. ': 'numbered',
+    '[] ': 'task',
+    '[ ] ': 'task',
+    '> ': 'quote',
+    '``` ': 'code',
+  })[text] || null;
+}
+
+function listContinuationType(type) {
+  return ['bullet', 'numbered', 'task'].includes(type) ? type : 'paragraph';
+}
+
+function marksBeforeSplit(marks, offset) {
+  return marks
+    .filter((mark) => mark.from < offset)
+    .map((mark) => ({ ...mark, to: Math.min(mark.to, offset), attributes: { ...mark.attributes } }))
+    .filter((mark) => mark.to > mark.from);
+}
+
+function marksAfterSplit(marks, offset) {
+  return marks
+    .filter((mark) => mark.to > offset)
+    .map((mark) => ({ ...mark, from: Math.max(mark.from, offset) - offset, to: mark.to - offset, attributes: { ...mark.attributes } }))
+    .filter((mark) => mark.to > mark.from);
+}
+
+function numberedListIndex(blocks, index) {
+  let value = 1;
+  for (let cursor = index - 1; cursor >= 0 && blocks[cursor].type === 'numbered'; cursor -= 1) value += 1;
+  return value;
+}
+
+function blockControlOffset(type) {
+  if (type === 'h1') return '2rem';
+  if (type === 'h2') return '1.75rem';
+  if (['h3', 'divider'].includes(type)) return '1.5rem';
+  if (['code', 'quote', 'callout'].includes(type)) return '0.75rem';
+  return '0rem';
 }
 
 function renderMarkedText(element, text, marks) {

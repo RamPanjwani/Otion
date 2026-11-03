@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { MousePointer2, SmilePlus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MousePointer2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -9,13 +9,15 @@ import ShareModal from '../components/ShareModal';
 import VersionHistoryModal from '../components/VersionHistoryModal';
 import CommentsModal from '../components/CommentsModal';
 import PageStyleModal from '../components/PageStyleModal';
-import AmbientBackground from '../components/AmbientBackground';
 import useAuth from '../hooks/useAuth';
 import useNotes from '../hooks/useNotes';
 import useDebouncedEffect from '../hooks/useDebouncedEffect';
 import useCollaborativeNote from '../hooks/useCollaborativeNote';
 import api from '../services/api';
 import { connectSocket, socket } from '../services/socket';
+import { getNoteStats } from '../utils/noteContent';
+
+const DEFAULT_VIEW_SETTINGS = { smallText: false, fullWidth: false };
 
 export default function NoteEditor() {
   const { id } = useParams();
@@ -32,10 +34,13 @@ export default function NoteEditor() {
   const [cursors, setCursors] = useState({});
   const [remoteSelections, setRemoteSelections] = useState({});
   const [saveStatus, setSaveStatus] = useState('saved');
+  const [actionError, setActionError] = useState('');
+  const [viewSettings, setViewSettings] = useState(readViewSettings);
   const dirtyRef = useRef(false);
   const lastPointerRef = useRef(0);
   const articleRef = useRef(null);
   const navigate = useNavigate();
+  const noteStats = useMemo(() => getNoteStats(note?.content), [note?.content]);
 
   const collaborative = useCollaborativeNote(id, Boolean(note?._id === id && user), useCallback((content, metadata) => {
     if (metadata?.local) {
@@ -48,9 +53,20 @@ export default function NoteEditor() {
 
   useEffect(() => {
     let active = true;
-    api.get(`/notes/${id}`).then(({ data }) => { if (active) { setNote(data); setError(''); } }).catch((requestError) => { if (active) setError(requestError.response?.data?.message || 'Unable to open note'); });
+    api.get(`/notes/${id}`).then(({ data }) => {
+      if (!active) return;
+      const lastOpenedAt = new Date().toISOString();
+      setNote(data);
+      setNotes((current) => current.map((item) => item._id === id ? { ...item, lastOpenedAt } : item));
+      setError('');
+      setActionError('');
+    }).catch((requestError) => { if (active) setError(requestError.response?.data?.message || 'Unable to open note'); });
     return () => { active = false; };
-  }, [id]);
+  }, [id, setNotes]);
+
+  useEffect(() => {
+    localStorage.setItem('otion_note_view_settings', JSON.stringify(viewSettings));
+  }, [viewSettings]);
 
   const loadedNoteId = note?._id;
   useEffect(() => {
@@ -188,7 +204,7 @@ export default function NoteEditor() {
       setNotes((current) => current.map((item) => item._id === id ? { ...item, isFavorite: !isFavorite } : item));
     }
   };
-  const saveImmediately = async () => {
+  const saveImmediately = useCallback(async () => {
     if (!note || !['owner', 'editor'].includes(note.accessRole) || saveStatus === 'saving') return;
     setSaveStatus('saving');
     try {
@@ -201,20 +217,51 @@ export default function NoteEditor() {
       if ([403, 404].includes(requestError.response?.status)) navigate('/dashboard', { replace: true });
       else setSaveStatus('error');
     }
+  }, [id, navigate, note, saveStatus]);
+
+  useEffect(() => {
+    const handleSaveShortcut = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        saveImmediately();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [saveImmediately]);
+
+  const duplicateNote = async () => {
+    if (!note) return false;
+    setActionError('');
+    try {
+      const { data } = await api.post('/notes', {
+        title: `${note.title?.trim() || 'Untitled note'} (Copy)`,
+        icon: note.icon || '📝',
+        content: note.content || [],
+      });
+      setNotes((current) => [data, ...current.filter((item) => item._id !== data._id)]);
+      navigate(`/notes/${data._id}`);
+      return true;
+    } catch (requestError) {
+      setActionError(requestError.response?.data?.message || 'Unable to duplicate this note');
+      return false;
+    }
   };
 
+  const updateViewSetting = (key, value) => setViewSettings((current) => ({ ...current, [key]: value }));
+
   return (
-    <div className="relative min-h-screen bg-canvas md:pl-60">
-      <AmbientBackground subtle />
+    <div className="app-shell relative min-h-screen bg-canvas">
       <Sidebar notes={notes} onCreated={(created) => setNotes((current) => [created, ...current.filter((item) => item._id !== created._id)])} onReordered={setNotes} />
-      <Navbar title={note?.title || 'Note'} collaborators={presence} onShare={note?.accessRole === 'owner' ? () => setShareOpen(true) : undefined} onArchive={note?.accessRole === 'owner' ? archive : undefined} onSave={['owner', 'editor'].includes(note?.accessRole) ? saveImmediately : undefined} saveStatus={saveStatus} starred={Boolean(note?.isFavorite)} onToggleStar={toggleStar} onHistory={() => setHistoryOpen(true)} onUndo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.undo : undefined} onRedo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.redo : undefined} onComments={() => setCommentsOpen(true)} />
-      {error ? <div className="mx-auto max-w-2xl p-10 text-red-700">{error}</div> : !note || note._id !== id ? <Loading fullPage /> : note && <main className="relative pb-12">
-        <article ref={articleRef} onPointerMove={handlePointerMove} className="surface-card relative mx-auto my-6 min-h-[calc(100vh-150px)] max-w-[920px] rounded-[24px] px-6 py-12 sm:px-12 lg:py-16">
-          {['owner', 'editor'].includes(note.accessRole) && <div className="mb-5 flex gap-2 text-sm text-muted"><button onClick={openNoteStyle} className="secondary-action px-3 py-2 text-xs"><SmilePlus size={15} /> Change emoji</button></div>}
-          <button onClick={['owner', 'editor'].includes(note.accessRole) ? openNoteStyle : undefined} className="mb-5 rounded-2xl text-7xl leading-none transition hover:scale-105 sm:text-8xl" aria-label="Note emoji">{note.icon || '📝'}</button>
-          <input value={note.title || ''} readOnly={!['owner', 'editor'].includes(note.accessRole)} onChange={(event) => updateNote({ title: event.target.value })} placeholder="Untitled note" className="mb-12 w-full bg-transparent text-5xl font-bold leading-[1.02] tracking-[-0.055em] outline-none sm:text-6xl lg:text-7xl" />
+      <Navbar title={note?.title || 'Note'} collaborators={presence} onShare={note?.accessRole === 'owner' ? () => setShareOpen(true) : undefined} onArchive={note?.accessRole === 'owner' ? archive : undefined} onSave={['owner', 'editor'].includes(note?.accessRole) ? saveImmediately : undefined} saveStatus={saveStatus} starred={Boolean(note?.isFavorite)} onToggleStar={toggleStar} onHistory={() => setHistoryOpen(true)} onUndo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.undo : undefined} onRedo={['owner', 'editor'].includes(note?.accessRole) ? collaborative.redo : undefined} onComments={() => setCommentsOpen(true)} viewOptions={{ settings: viewSettings, onChange: updateViewSetting, onDuplicate: duplicateNote, stats: noteStats }} />
+      {error ? <div className="mx-auto max-w-2xl p-10 text-red-700">{error}</div> : !note || note._id !== id ? <Loading fullPage /> : note && <main className="relative pb-20">
+        <article ref={articleRef} onPointerMove={handlePointerMove} className={`note-canvas relative mx-auto min-h-[calc(100vh-56px)] px-6 pb-20 pt-14 transition-[max-width,padding] sm:px-12 sm:pt-20 lg:px-16 ${viewSettings.fullWidth ? 'max-w-[1440px]' : 'max-w-[920px]'}`}>
+          <button onClick={['owner', 'editor'].includes(note.accessRole) ? openNoteStyle : undefined} className="mb-3 rounded-lg text-5xl leading-none transition hover:bg-panel/70 sm:text-6xl" aria-label="Note emoji">{note.icon || '📝'}</button>
+          <input value={note.title || ''} readOnly={!['owner', 'editor'].includes(note.accessRole)} onChange={(event) => updateNote({ title: event.target.value })} placeholder="Untitled note" className="mb-9 w-full bg-transparent text-3xl font-bold leading-[1.08] tracking-[-0.035em] outline-none placeholder:text-muted/35 sm:text-4xl lg:text-5xl" />
+          {actionError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{actionError}</p>}
           {collaborative.syncError && <p role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{collaborative.syncError}</p>}
-          <Editor value={note.content || []} readOnly={!['owner', 'editor'].includes(note.accessRole) || !collaborative.synced} onChange={(content) => updateNote({ content })} onFormat={collaborative.formatRanges} />
+          <Editor value={note.content || []} readOnly={!['owner', 'editor'].includes(note.accessRole) || !collaborative.synced} onChange={(content) => updateNote({ content })} onFormat={collaborative.formatRanges} smallText={viewSettings.smallText} />
+          <p className="mt-10 text-right text-xs text-muted" aria-live="polite">{noteStats.words.toLocaleString()} words · {noteStats.characters.toLocaleString()} characters</p>
           {Object.values(remoteSelections).length > 0 && <div className="pointer-events-none sticky bottom-4 ml-auto flex w-fit max-w-sm flex-col gap-1">{Object.entries(remoteSelections).map(([socketId, { user: selectionUser, selection }]) => <div key={socketId} className="rounded-xl bg-indigo-500/95 px-3 py-2 text-xs text-white shadow-lg"><span className="font-semibold">{selectionUser.name}</span> selected “{selection.text}”</div>)}</div>}
           {Object.entries(cursors).map(([socketId, cursor]) => <div key={socketId} className="pointer-events-none absolute z-50 transition-[left,top] duration-75 ease-linear" style={{ left: `${cursor.position.xRatio * 100}%`, top: `${cursor.position.yRatio * 100}%` }}><MousePointer2 size={22} className="fill-indigo-500 text-white drop-shadow" /><span className="ml-3 -mt-1 block whitespace-nowrap rounded-xl bg-indigo-500 px-2 py-1 text-[10px] font-semibold text-white">{cursor.user.name}</span></div>)}
         </article>
@@ -225,6 +272,18 @@ export default function NoteEditor() {
       <PageStyleModal open={styleOpen} onClose={() => setStyleOpen(false)} value={styleDraft} onChange={setStyleDraft} onApply={() => { updateNote({ icon: styleDraft.icon || '📝' }); setStyleOpen(false); }} />
     </div>
   );
+}
+
+function readViewSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('otion_note_view_settings') || '{}');
+    return {
+      smallText: Boolean(saved.smallText),
+      fullWidth: Boolean(saved.fullWidth),
+    };
+  } catch {
+    return DEFAULT_VIEW_SETTINGS;
+  }
 }
 
 function serializeSelection(root) {
