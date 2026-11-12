@@ -112,7 +112,7 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}
@@ -129,7 +129,7 @@ jobs:
 
       - name: Upload the Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: |
@@ -247,7 +247,7 @@ jobs:
             echo "PRODUCTION_MONGO_URI is not configured; skipping the migration check."
             exit 0
           fi
-          npm --prefix server ci
+          npm --prefix server ci --omit=dev
           MONGO_URI="${PRODUCTION_MONGO_URI}" npm --prefix server run migrate -- --check
 
       - name: Wait for the production API

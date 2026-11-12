@@ -65,7 +65,7 @@ jobs:
             --target "mongodb://127.0.0.1:27017/otion_restore_verify"
 
       - name: Keep the backup for a week
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: otion-backup-${{ github.run_id }}
           path: ${{ runner.temp }}/otion-backup.json.gz
