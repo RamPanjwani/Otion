@@ -202,8 +202,9 @@ membership and sharing adds `guest` memberships.
 | Stage | What happens |
 | --- | --- |
 | Pull request | `verify`: server tests (API/socket, migrations, seed) + audit, client lint + unit tests + build + audit |
+| Browser pass | `e2e`: Playwright runs the seeded stack in a real browser (sign-in, autosave, public link) |
 | Image build | `docker`: compose config validation, both images built, stack booted, health + SPA smoke test |
-| Merge to `main` | Render redeploys when the commit touches `server/`, Vercel rebuilds every push; the `deploy` job re-triggers optional hooks and probes production health |
+| Merge to `main` | Render redeploys when the commit touches `server/`, Vercel rebuilds every push; the `deploy` job re-triggers optional hooks, probes production health and fails on pending production migrations |
 | Runtime | API `/api/health` reports database readiness; Render and Vercel serve the app |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy

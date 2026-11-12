@@ -29,9 +29,9 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -77,13 +77,73 @@ jobs:
         working-directory: client
         run: npm audit --omit=dev --audit-level=critical
 
+  e2e:
+    name: Browser end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}
+
+      - name: Install Chromium
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests against the seeded stack
+        working-directory: client
+        env:
+          E2E_MONGO_URI: mongodb://127.0.0.1:27017/otion_e2e
+        run: npm run test:e2e
+
+      - name: Upload the Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7
+
   docker:
     name: Build and smoke-test containers
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate the Compose file
         env:
@@ -143,12 +203,20 @@ jobs:
 
   deploy:
     name: Deploy to Render and Vercel
-    needs: [verify, docker]
+    needs: [verify, e2e, docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
       - name: Trigger the Render deployment
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
@@ -170,6 +238,17 @@ jobs:
           fi
           curl -fsS --retry 3 --retry-delay 5 -X POST "${VERCEL_DEPLOY_HOOK_URL}"
           echo "Vercel deployment triggered."
+
+      - name: Verify the production schema is up to date
+        env:
+          PRODUCTION_MONGO_URI: ${{ secrets.PRODUCTION_MONGO_URI }}
+        run: |
+          if [ -z "${PRODUCTION_MONGO_URI}" ]; then
+            echo "PRODUCTION_MONGO_URI is not configured; skipping the migration check."
+            exit 0
+          fi
+          npm --prefix server ci
+          MONGO_URI="${PRODUCTION_MONGO_URI}" npm --prefix server run migrate -- --check
 
       - name: Wait for the production API
         run: |

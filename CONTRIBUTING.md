@@ -32,6 +32,22 @@ npm run dev               # http://localhost:5173
 `server/.env` is never committed. Keep `MONGO_URI` for development and point `TEST_MONGO_URI` at a
 database you are willing to have dropped, because the suite deletes its own uniquely named databases.
 
+## Browser tests
+
+The Playwright suite lives in `client/e2e/` and runs against a real API and database:
+
+```bash
+cd client
+npx playwright install chromium                       # once per machine
+npm run test:e2e                                     # migrates, seeds, serves and drives Chromium
+E2E_MONGO_URI='mongodb://ram:pass@127.0.0.1:27017/?authSource=admin' npm run test:e2e
+```
+
+It seeds the `otion_e2e` database, so it never touches your development data, and it builds the
+client with `VITE_API_URL=http://localhost:5000/api`. Add a spec when you change a flow a unit test
+cannot see: sign-in, autosave, sharing, or public links. On failure, Playwright writes a trace to
+`client/test-results/`; open it with `npx playwright show-trace <trace.zip>`.
+
 ## Tests
 
 ```bash
@@ -44,7 +60,7 @@ The server suite contains four files:
 | File | Covers |
 | --- | --- |
 | `tests/api.integration.test.js` | Registration/login, authorization matrix, sharing, public links, revisions, comments, sockets and account lifecycle |
-| `tests/migrations.test.js` | The runner applies each migration once, `--dry-run` records nothing, and a missing `MONGO_URI` fails |
+| `tests/migrations.test.js` | The runner applies each migration once, `--dry-run` records nothing, `--check` fails while work is pending, and a missing `MONGO_URI` fails |
 | `tests/seed.test.js` | The seeded graph matches the docs and a second run purges and rebuilds it without duplicates |
 | `tests/*.test.js` | Discovered automatically — put new suites here so CI picks them up |
 

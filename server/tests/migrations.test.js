@@ -52,7 +52,8 @@ const ledgerEntries = async (uri) => {
 
 const appliedDatabase = withDatabase(baseUri, scratchName('otion_migrations'));
 const dryRunDatabase = withDatabase(baseUri, scratchName('otion_migrations_dry'));
-const databases = [appliedDatabase, dryRunDatabase];
+const checkDatabase = withDatabase(baseUri, scratchName('otion_migrations_check'));
+const databases = [appliedDatabase, dryRunDatabase, checkDatabase];
 
 after(async () => {
   if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
@@ -96,6 +97,23 @@ test('--dry-run reports pending migrations without recording them', async () => 
 
   const { documents } = await ledgerEntries(dryRunDatabase);
   assert.equal(documents.length, 0, 'a dry run must not write to the ledger');
+});
+
+test('--check fails while migrations are pending and passes once they are applied', async () => {
+  const pending = await runMigration(checkDatabase, ['--check']).then(() => null, (error) => error);
+  assert.ok(pending, 'a database with pending migrations should fail the check');
+  for (const id of migrationIds) {
+    assert.match(pending.stdout, new RegExp(`check ${id}:`));
+  }
+  assert.match(`${pending.stdout}${pending.stderr}`, /Pending migrations: \d+/);
+
+  const { documents } = await ledgerEntries(checkDatabase);
+  assert.equal(documents.length, 0, '--check must not record migrations');
+
+  await runMigration(checkDatabase);
+  const clean = await runMigration(checkDatabase, ['--check']);
+  assert.doesNotMatch(clean.stdout, /^check /m, 'nothing should be pending after applying');
+  assert.doesNotMatch(clean.stdout, /^apply /m);
 });
 
 test('the runner refuses to start without MONGO_URI', async () => {

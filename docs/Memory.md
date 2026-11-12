@@ -190,7 +190,7 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   9 revisions, 1 comment with a mention, 2 notifications, 1 enabled public share whose printed token
   hashes to the stored SHA-256 value). A second run reports `Removed previous demo data: 3 account(s),
   8 note(s)` and leaves exactly one workspace and the same counts.
-- Server suite: **8/8 passing** locally (4 API/socket + 3 migration + 1 seed, ~14 s) against a real
+- Server suite: **9/9 passing** locally (4 API/socket + 4 migration + 1 seed, ~20 s) against a real
   MongoDB; the API file was also re-run green after the Mongoose upgrade.
 - Dependency audit: `npm audit --omit=dev` is **clean** in both packages after bumping `mongoose` to
   `^9.12.1` (four advisories, including prototype pollution via `Schema.prototype.virtual()`).
@@ -206,6 +206,16 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   remain unset and their CI steps only log a skip. A docs-only follow-up (`f7bf38b`) correctly
   produced no Render deploy — the service's root directory is `server/`, so Render ignores commits
   outside it — while Vercel rebuilt it; CI stayed green (run `43286866630`).
+- Browser coverage added: a Playwright suite in `client/e2e/` boots the stack itself (migrate + seed
+  into `otion_e2e`, API on `:5000`, production client build on `:4173`) and exercises the
+  unauthenticated redirect, demo sign-in, invalid credentials, note creation with autosave across a
+  reload, and a password-protected public link that renders read-only. **5/5 passing locally**
+  (~19 s); CI runs the same suite in a dedicated `e2e` job.
+- Migration safety: the runner gained `--check`, a dry run that exits non-zero while migrations are
+  pending, covered by a fourth migration test. The deploy job runs it against production whenever
+  `PRODUCTION_MONGO_URI` is configured, so a release fails instead of serving an outdated schema.
+- CI hygiene: `actions/checkout` and `actions/setup-node` moved to `v5`, clearing the Node 20
+  deprecation annotation; the deploy job now checks out the repository so it can run the check.
 
 ## Remaining roadmap
 

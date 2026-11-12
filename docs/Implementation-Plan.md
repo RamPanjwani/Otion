@@ -4,7 +4,7 @@
 
 | Phase | Status | Delivered in this implementation |
 | --- | --- | --- |
-| 0 — Stabilization | Substantially complete | Validation, security middleware, structured errors/logs, indexes, migrations, CI, API/socket integration tests, migration-runner and seed tests, clean audits. Browser E2E remains. |
+| 0 — Stabilization | Complete | Validation, security middleware, structured errors/logs, indexes, migrations, CI (verify, browser E2E, container smoke), API/socket integration tests, migration-runner and seed tests, clean audits. |
 | 1 — Workspaces/preferences | Complete | Workspace models/UI/migration, membership discovery, personal favorites, recent-open timestamps. |
 | 2 — CRDT collaboration | Complete | Yjs incremental updates, snapshots/update log, reconnect merge, stable block IDs, per-operation auth, JSON compatibility. |
 | 3 — Version history | Complete | Automatic/manual revisions, timeline, protected restore, pre-restore preservation, undo/redo. |
@@ -14,7 +14,7 @@
 | 7 — Comments/notifications | Partial | Page comments, mentions, resolve/reopen, realtime refresh, and in-app notifications. Threaded/block-targeted UI, email, and preferences remain. |
 | 8 — Search | Core complete | Permission-scoped API, title/block search, workspace filter, previews, debounced UI, fallback index. Atlas Search deployment configuration remains. |
 | 9 — UX/accessibility/accounts | Partial | Save status, responsive UI, confirmation password, dark mode, reduced motion, accessible modal focus handling, profile/password/data export/account deletion. Recovery, verification, active sessions, and full audit remain. |
-| 10 — Production hardening | Partial | CORS, Helmet, rate limits, redaction, CI (verify + container smoke + deploy hooks), audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose (validated in CI). Staging, monitoring, backups, and load tests remain. |
+| 10 — Production hardening | Partial | CORS, Helmet, rate limits, redaction, CI (verify + browser E2E + container smoke + gated deploy probes and migration check), audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose (validated in CI). Staging, monitoring, backups, and load tests remain. |
 
 This roadmap delivers the planned improvements incrementally. Every phase must remain deployable and pass authorization, API, realtime, and browser tests before the next phase begins.
 
@@ -35,7 +35,7 @@ This roadmap delivers the planned improvements incrementally. Every phase must r
 - Test note CRUD and the trash lifecycle.
 - Test sharing and public-link privacy.
 - Test Socket.io authentication, role changes, and revocation.
-- Add Playwright smoke tests for primary user journeys.
+- Add Playwright smoke tests for primary user journeys. — **done**: `client/e2e/` covers sign-in, note autosave and public-link sharing against the seeded stack, and CI runs it as its own job.
 
 ### Infrastructure
 

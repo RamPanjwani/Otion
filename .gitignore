@@ -14,6 +14,11 @@ client/dist/
 client/build/
 dist/
 
+# Playwright
+client/test-results/
+client/playwright-report/
+client/blob-report/
+
 # Logs & Cache
 *.log
 npm-debug.log*

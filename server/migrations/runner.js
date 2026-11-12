@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 
-const dryRun = process.argv.includes('--dry-run');
+// `--check` is a dry run that also fails the process when migrations are
+// pending, so CI can gate a release without mutating the database.
+const checkOnly = process.argv.includes('--check');
+const dryRun = checkOnly || process.argv.includes('--dry-run');
 
 const run = async () => {
   if (!process.env.MONGO_URI) throw new Error('MONGO_URI must be configured');
@@ -15,15 +18,22 @@ const run = async () => {
     .filter((file) => /^\d+.*\.js$/.test(file))
     .sort();
 
+  let pending = 0;
   for (const file of files) {
     const migration = require(path.join(__dirname, file));
     if (applied.has(migration.id)) {
       console.log(`skip ${migration.id}`);
       continue;
     }
+    pending += 1;
     console.log(`${dryRun ? 'check' : 'apply'} ${migration.id}: ${migration.description}`);
     await migration.up({ mongoose, dryRun });
     if (!dryRun) await migrations.insertOne({ id: migration.id, appliedAt: new Date() });
+  }
+
+  if (checkOnly && pending > 0) {
+    console.error(`Pending migrations: ${pending}`);
+    process.exitCode = 1;
   }
 };
 

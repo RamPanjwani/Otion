@@ -140,6 +140,7 @@ npm audit --omit=dev
 cd ../client
 npm run lint
 npm test                        # node:test unit tests
+npm run test:e2e                # Playwright against a seeded database
 npm run build
 npm audit --omit=dev
 ```
@@ -149,8 +150,16 @@ uniquely named database on `MONGO_URI`. `npm run seed` and `npm run truncate` ar
 that write to the configured database outside the test suite.
 
 The suite auto-discovers `server/tests/*.test.js`: the API/socket integration file, plus coverage
-for the migration runner (apply once, `--dry-run` writes nothing, missing `MONGO_URI` fails) and the
-demo seed (the documented graph, hashed public token, and a second run that purges before rebuilding).
+for the migration runner (apply once, `--dry-run` writes nothing, `--check` fails while migrations
+are pending, missing `MONGO_URI` fails) and the demo seed (the documented graph, hashed public token,
+and a second run that purges before rebuilding).
+
+`npm run test:e2e` in `client/` is a Playwright suite that drives a real browser against a real
+stack: it migrates and seeds a dedicated `otion_e2e` database, starts the API on `:5000`, builds the
+client and serves the production bundle on `:4173`. The specs cover the unauthenticated redirect,
+demo sign-in, note creation plus autosave surviving a reload, and a password-protected public link
+that renders read-only. Install Chromium once with `npx playwright install chromium`, and override
+`E2E_MONGO_URI` when MongoDB needs credentials.
 
 ## Docker
 
@@ -198,14 +207,17 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 
 1. **verify** — MongoDB service, server suite (API/socket integration, migration runner and seed
    script), server audit, client install, lint, unit tests, production build, client audit.
-2. **docker** — validates `docker-compose.yml`, builds both images, boots MongoDB + API + nginx and
+2. **e2e** — MongoDB service, Chromium via Playwright, then the browser suite against a freshly
+   migrated and seeded stack; the report is uploaded when it fails.
+3. **docker** — validates `docker-compose.yml`, builds both images, boots MongoDB + API + nginx and
    probes `/api/health` and the SPA through the client container.
-3. **deploy** — on `main` only. Render and Vercel deploy the push themselves (Render `autoDeploy`
+4. **deploy** — on `main` only. Render and Vercel deploy the push themselves (Render `autoDeploy`
    plus the Vercel Git integration); Render redeploys only when the commit touches `server/`, while
    Vercel rebuilds on every `main` push. This job only fires the optional
    `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL` hooks — handy for re-deploying without a new
-   commit — and then checks that the production API answers. When a secret is absent the
-   corresponding step logs a skip instead of failing.
+   commit — and then checks that the production API answers. When `PRODUCTION_MONGO_URI` exists it
+   also runs `npm run migrate -- --check` against production, which fails the job if the deployed
+   schema is behind the repository. Any absent secret makes its step log a skip instead of failing.
 
 ## Contributing
 
