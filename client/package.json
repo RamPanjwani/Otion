@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/react": "^11.12.0",
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.13.6",
     "lucide-react": "^0.468.0",

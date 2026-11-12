@@ -1,0 +1,44 @@
+name: Staging refresh
+
+# Staging is only useful if it holds realistic data, but copying production
+# wholesale would carry real emails, password hashes, invitation tokens and
+# share links into a second environment. This weekly job copies production into
+# the staging database with those fields rewritten.
+on:
+  schedule:
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Refresh staging from a scrubbed production dump
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Dump production, scrub it, restore into staging
+        working-directory: server
+        env:
+          PRODUCTION_MONGO_URI: ${{ secrets.PRODUCTION_MONGO_URI }}
+          STAGING_MONGO_URI: ${{ secrets.STAGING_MONGO_URI }}
+        run: |
+          if [ -z "${PRODUCTION_MONGO_URI}" ] || [ -z "${STAGING_MONGO_URI}" ]; then
+            echo "PRODUCTION_MONGO_URI or STAGING_MONGO_URI is not configured; skipping the refresh."
+            exit 0
+          fi
+          npm run sync:staging

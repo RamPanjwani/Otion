@@ -160,6 +160,10 @@ and a second run that purges before rebuilding), the backup script (Extended JSO
 preserves ObjectIds and dates, with `verify` comparing collection counts), and error tracking (inert
 without a DSN, active with one, and a thrown Express error reaching a stand-in ingest endpoint).
 
+`npm test` in `client/` runs the unit tests under `node --test`: markdown conversion, note statistics,
+virtual-list windowing and browser error tracking (inert without a DSN, rejected malformed DSN, a
+captured exception delivered to a stand-in ingest endpoint, and credentials scrubbed before sending).
+
 `npm run test:e2e` in `client/` is a Playwright suite that drives a real browser against a real
 stack: it migrates and seeds a dedicated `otion_e2e` database, starts the API on `:5000`, builds the
 client and serves the production bundle on `:4173`. The specs cover the unauthenticated redirect,
@@ -216,6 +220,8 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 - Production deploys come from the Vercel Git integration on pushes to `main`.
 - Environment: `VITE_API_URL=https://otion-api.onrender.com/api`,
   `VITE_SOCKET_URL=https://otion-api.onrender.com`.
+- Optional: `VITE_SENTRY_DSN` / `VITE_SENTRY_ENVIRONMENT` turn on browser error tracking (see
+  *Operations → Error tracking*). Unset, the SDK is never downloaded.
 - `client/vercel.json` rewrites every path to `index.html` for client-side routing.
 
 ## CI/CD
@@ -277,6 +283,16 @@ build finishes.
 performance tracing. Tests stay silent even with a DSN exported, and a malformed DSN logs a warning
 instead of stopping the API.
 
+The browser is wired the same way. `client/src/services/monitoring.js` imports `@sentry/react` only
+when `VITE_SENTRY_DSN` is set, so without a DSN the SDK is never downloaded — it stays in its own
+lazy chunk and the entry bundle is unchanged (388.7 kB either way). `ErrorBoundary` reports render
+errors and shows a reload screen instead of a blank page, and `beforeSend` strips
+`authorization`/`cookie` headers and `token=`/`password=` query values before sending. Set the
+variables in the Vercel project (Settings → Environment Variables) for production and previews; the
+DSN is a public client key, so it is inlined into the bundle by design. Browser stack traces arrive
+minified until source maps are uploaded — `@sentry/vite-plugin` with an auth token is the follow-up
+if readable traces matter.
+
 **Backups.** `.github/workflows/backup.yml` runs daily at 03:17 UTC (and on demand). It dumps every
 production collection as Extended JSON, restores the archive into a scratch MongoDB service,
 compares collection counts, and keeps the archive as a build artifact for seven days. There is no
@@ -293,6 +309,48 @@ npm run verify:backup -- --target '<scratch uri>'                       # dump, 
 any count mismatch — that is the restore drill. The dump preserves ObjectIds, dates and nested
 types. Atlas' free tier has no point-in-time recovery, so this daily logical backup with seven-day
 retention is the recovery story: anything older than a week is gone.
+
+**Staging refresh.** `.github/workflows/staging-refresh.yml` runs weekly (and on demand) through
+`npm run sync:staging`: it dumps production, rewrites emails, names, avatars, password hashes,
+invitation tokens and public-share tokens, restores the result into staging (clearing its collections
+first) and then checks that every collection still holds the same number of documents. The three
+seeded demo accounts keep their documented password so the demo login keeps working; every other
+account becomes `user-<id>@staging.otion.invalid` with the shared staging password. The job needs a
+`STAGING_MONGO_URI` secret alongside `PRODUCTION_MONGO_URI` and skips itself if either is missing.
+
+```bash
+cd server
+PRODUCTION_MONGO_URI='<atlas uri>' STAGING_MONGO_URI='<staging uri>' npm run sync:staging
+```
+
+It refuses to run when source and target resolve to the same database, and it deletes both temporary
+archives when it finishes (`--keep-archive` warns, because the first one is unscubbed). Note text is
+copied as-is: staging holds real note content, only identities are rewritten.
+
+**Load and soak testing.** `npm run loadtest` drives the real API with N virtual users. Each user
+registers its own account, warms up with a few notes, then loops over list/get/create/update until
+the deadline; the run reports throughput, p50/p95/p99 and the status mix, deletes the notes it created
+(`--keep` to keep them) and exits non-zero when the error share exceeds `--max-error-rate`.
+
+```bash
+cd server
+API_RATE_LIMIT=1000000 AUTH_RATE_LIMIT=100000 PORT=5050 npm start   # throwaway target
+npm run loadtest -- --base http://127.0.0.1:5050 --users 10 --duration 20 --json load.json
+```
+
+Baseline measured on this machine (Node 26, one local `mongod`, throwaway `otion_load` database):
+
+| Run | Requests | Throughput | p50 | p95 | p99 | Failures |
+| --- | --- | --- | --- | --- | --- | --- |
+| 20 s, fresh database | 4,631 | 231 req/s | 39.0 ms | 80.0 ms | 105.9 ms | 0 |
+| 20 s, repeat | 4,913 | 245 req/s | 36.0 ms | 73.8 ms | 103.8 ms | 0 |
+| 60 s soak | 10,568 | 176 req/s | 51.2 ms | 107.8 ms | 136.8 ms | 0 |
+
+The soak run created notes faster than it read them, so its collection grew and its p95 rose; server
+RSS moved 374 MB → 380 MB across those 10,568 requests, with no failure and no restart. That is a
+laptop baseline, not a capacity plan — the free Render instance has a fraction of the CPU and sleeps
+when idle. Defaults (500 API / 30 auth requests per 15 minutes) are the production ceilings; raise
+`API_RATE_LIMIT` / `AUTH_RATE_LIMIT` on the target or the run measures the limiter rather than the API.
 
 ## Contributing
 

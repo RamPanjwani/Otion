@@ -212,8 +212,10 @@ membership and sharing adds `guest` memberships.
 | Runtime | API `/api/health` reports database readiness; Render restarts on a failed health check and serves the app |
 | Backups | `backup.yml` dumps production daily, restores the archive into a scratch MongoDB, compares collection counts and keeps it for seven days |
 | Uptime | `uptime.yml` probes the API health endpoint and the web app every 30 minutes and fails loudly |
-| Errors | `config/monitoring.js` initialises Sentry only when `SENTRY_DSN` is set; Express 5xx errors, unhandled rejections and uncaught exceptions are reported with sensitive headers stripped |
+| Errors | `config/monitoring.js` initialises Sentry only when `SENTRY_DSN` is set; Express 5xx errors, unhandled rejections and uncaught exceptions are reported with sensitive headers stripped. The browser mirrors it behind `VITE_SENTRY_DSN` with a lazily loaded SDK, an error boundary and scrubbed URLs, and stays silent without one |
 | Staging | `otion-api-staging` runs `main` against the `otion_staging` database; Vercel previews from the `staging` branch point at it |
+| Staging data | `staging-refresh.yml` copies production into staging weekly, rewriting emails, password hashes, and invitation/share tokens, then checks that collection counts survived |
+| Load testing | `scripts/loadtest.js` drives the real API with configurable virtual users, reports latency percentiles and fails on an error-rate breach; run against a throwaway target, never production |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy
 cannot silently mutate production data. The API service itself is described in `render.yaml`
@@ -230,7 +232,7 @@ themselves, so a push deploys without any CI credential.
 - Browser coverage is a five-spec Playwright smoke suite, not an exhaustive matrix of every editor or sharing path.
 - Atlas' free tier offers no point-in-time recovery; recovery relies on the daily logical backup and its seven-day artifact retention.
 - The staging API runs on the free plan, so it sleeps when idle and its first request can take a minute.
-- No load or soak testing has been run against production.
-- Error tracking depends on an external Sentry project; without `SENTRY_DSN` the API logs structured errors only.
+- Load and soak numbers exist only for a local single-node setup; nothing has been measured against production or the free Render instance.
+- Error tracking depends on an external Sentry project; without `SENTRY_DSN` (API) or `VITE_SENTRY_DSN` (browser) both sides log only. Browser stack traces stay minified until source maps are uploaded.
 - `table` and `file` block types are accepted by the validator but not rendered by the editor.
 - Workspace roles beyond `owner`/`guest` are reserved and have no management API.

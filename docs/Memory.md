@@ -254,6 +254,14 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   throwaway key that was then removed, leaving `JWT_SECRET`, `MONGO_URI`, `CLIENT_URLS`, `NODE_ENV`;
   production holds `CLIENT_URL`, `JWT_SECRET`, `MONGO_URI`, `NODE_ENV`. An env-var write triggers a
   redeploy, so the docs point at the API rather than a flag that does not exist.
+- Browser error tracking mirrors the server: `client/src/services/monitoring.js` imports
+  `@sentry/react` lazily and only when `VITE_SENTRY_DSN` is set, so without a DSN the SDK sits in an
+  unused 454 kB chunk that is never requested (the entry bundle measures 388.7 kB either way). The
+  browser SDK does not throw on a malformed DSN — it logs and keeps a disabled client — so the module
+  validates the DSN shape itself and reports `false`, matching the server. Five client tests cover the
+  inert default, rejection of a bad DSN, delivery of a captured exception to a local sink, and
+  credential/token scrubbing. `components/ErrorBoundary.jsx` now catches render errors instead of
+  leaving a blank page.
 - CI after the operations work: run `43297308350` green on all four jobs (verify 1m5s, browser E2E
   1m21s, container smoke 46 s, deploy 12 s with the production migration check), and the remaining
   annotation is only GitHub's `ubuntu-latest` → Ubuntu 26 migration notice.
@@ -263,6 +271,7 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
 Not implemented: multi-block drag/selection; automated invitation and notification email delivery;
 threaded/block-targeted comment UI; forgot-password, email verification and active-session
 management; refresh-token rotation; full accessibility audit and screen-reader pass; server-side
-pagination/virtualization; load/soak testing; Atlas Search deployment configuration; point-in-time
-recovery (paid Atlas tier). Staging, uptime monitoring and a daily restore drill are now delivered.
+pagination/virtualization; Atlas Search deployment configuration; point-in-time recovery (paid Atlas
+tier). Staging, uptime monitoring, a daily restore drill, a load/soak harness with a recorded local
+baseline and the weekly scrubbed staging refresh are now delivered.
 See `Implementation-Plan.md` for sequencing.

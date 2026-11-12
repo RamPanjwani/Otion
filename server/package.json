@@ -13,7 +13,9 @@
     "truncate": "node scripts/truncateDb.js",
     "backup": "node scripts/backup.js backup",
     "restore": "node scripts/backup.js restore",
-    "verify:backup": "node scripts/backup.js verify"
+    "verify:backup": "node scripts/backup.js verify",
+    "loadtest": "node scripts/loadtest.js",
+    "sync:staging": "node scripts/syncStaging.js"
   },
   "keywords": [],
   "author": "",

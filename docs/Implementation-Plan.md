@@ -14,7 +14,7 @@
 | 7 — Comments/notifications | Partial | Page comments, mentions, resolve/reopen, realtime refresh, and in-app notifications. Threaded/block-targeted UI, email, and preferences remain. |
 | 8 — Search | Core complete | Permission-scoped API, title/block search, workspace filter, previews, debounced UI, fallback index. Atlas Search deployment configuration remains. |
 | 9 — UX/accessibility/accounts | Partial | Save status, responsive UI, confirmation password, dark mode, reduced motion, accessible modal focus handling, profile/password/data export/account deletion. Recovery, verification, active sessions, and full audit remain. |
-| 10 — Production hardening | Substantially complete | CORS, Helmet, rate limits, redaction, CI (verify + browser E2E + container smoke + gated deploy probes and migration check), audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose (validated in CI), a staging service with its own database, 30-minute uptime probes, and daily backups with an automated restore drill. Load/soak tests remain. |
+| 10 — Production hardening | Substantially complete | CORS, Helmet, rate limits, redaction, CI (verify + browser E2E + container smoke + gated deploy probes and migration check), audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose (validated in CI), a staging service with its own database, 30-minute uptime probes, daily backups with an automated restore drill, a load/soak harness with a recorded baseline, and a weekly scrubbed staging refresh. |
 
 This roadmap delivers the planned improvements incrementally. Every phase must remain deployable and pass authorization, API, realtime, and browser tests before the next phase begins.
 
@@ -385,14 +385,16 @@ were built and then removed (migrations `013`/`014`); ordering is personal and s
 - Docker Compose with API and nginx client images is delivered; CI validates the compose file, builds both images and smoke-tests the running stack. The Render service is described in `render.yaml` and matches the live settings.
 - Staging is live: `otion-api-staging` on Render runs `main` against the `otion_staging` Atlas database, and Vercel previews of the `staging` branch build against it.
 - Enforce HTTPS and WSS: both providers terminate TLS, and the client derives `wss://` from `VITE_SOCKET_URL`.
-- Centralized logs: `pino-http` emits structured request logs to the Render log stream. Error tracking is wired through Sentry behind `SENTRY_DSN` and stays inert until a DSN exists, so today's exception alerting still rests on the uptime probe and provider notifications.
+- Centralized logs: `pino-http` emits structured request logs to the Render log stream. Error tracking is wired through Sentry behind `SENTRY_DSN` on the API and `VITE_SENTRY_DSN` in the browser, and stays inert until a DSN exists, so today's exception alerting still rests on the uptime probe and provider notifications.
+- Load and soak testing: `scripts/loadtest.js` exercises sign-in, create, read, update and list with configurable virtual users, reports p50/p95/p99 and exits non-zero past an error-rate ceiling. Baseline recorded on a local single-node setup; production is deliberately left unmeasured.
+- Staging data refresh: `staging-refresh.yml` copies production into `otion_staging` weekly with identities rewritten and collection counts verified, so staging does not drift from real data shapes.
 - Uptime checks: `uptime.yml` probes `/api/health` and the web app every 30 minutes and fails on any non-`ok` payload.
 - Backups and restore drills: `backup.yml` dumps production daily, restores the archive into a scratch MongoDB, compares collection counts and keeps the artifact for seven days.
 - Deployment and rollback procedures are documented in `readme.md` and `docs/Architecture.md`; Render keeps every previous deploy available for an instant rollback.
 
 ### Exit criteria
 
-- Production load tests pass.
+- Load tests pass their error-rate gate on a throwaway or staging target (production is not load-tested).
 - Backup restoration is tested.
 - Monitoring detects API, database, and realtime failures.
 
