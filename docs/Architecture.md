@@ -203,7 +203,7 @@ membership and sharing adds `guest` memberships.
 | --- | --- |
 | Pull request | `verify`: server tests (API/socket, migrations, seed) + audit, client lint + unit tests + build + audit |
 | Image build | `docker`: compose config validation, both images built, stack booted, health + SPA smoke test |
-| Merge to `main` | Render and Vercel deploy the commit through their Git integrations; the `deploy` job re-triggers optional hooks and probes production health |
+| Merge to `main` | Render redeploys when the commit touches `server/`, Vercel rebuilds every push; the `deploy` job re-triggers optional hooks and probes production health |
 | Runtime | API `/api/health` reports database readiness; Render and Vercel serve the app |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy

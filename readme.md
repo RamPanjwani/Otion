@@ -201,7 +201,8 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 2. **docker** — validates `docker-compose.yml`, builds both images, boots MongoDB + API + nginx and
    probes `/api/health` and the SPA through the client container.
 3. **deploy** — on `main` only. Render and Vercel deploy the push themselves (Render `autoDeploy`
-   plus the Vercel Git integration), so this job only fires the optional
+   plus the Vercel Git integration); Render redeploys only when the commit touches `server/`, while
+   Vercel rebuilds on every `main` push. This job only fires the optional
    `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL` hooks — handy for re-deploying without a new
    commit — and then checks that the production API answers. When a secret is absent the
    corresponding step logs a skip instead of failing.

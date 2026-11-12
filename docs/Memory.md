@@ -203,7 +203,9 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   Render deployed that commit (`dep-dbr0lt17lnhs73egi0k0`, `trigger: new_commit`) to `live` in 38 s,
   and Vercel built production deployment `otion-klgjdhers` (`Ready`, 7 s). Both platforms deploy
   themselves from the GitHub integration, so `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL`
-  remain unset and their CI steps only log a skip.
+  remain unset and their CI steps only log a skip. A docs-only follow-up (`f7bf38b`) correctly
+  produced no Render deploy — the service's root directory is `server/`, so Render ignores commits
+  outside it — while Vercel rebuilt it; CI stayed green (run `43286866630`).
 
 ## Remaining roadmap
 
