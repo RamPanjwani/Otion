@@ -44,6 +44,7 @@ The seed also publishes one note and prints its public link.
 | [`docs/API.md`](docs/API.md) | REST endpoints, payloads, errors, rate limits, Socket.IO protocol |
 | [`docs/Phases.md`](docs/Phases.md) | Build phases and their as-built status |
 | [`docs/Rules.md`](docs/Rules.md) | Approved libraries, design tokens, conventions for contributors |
+| [`docs/Gaps.md`](docs/Gaps.md) | Consolidated register of every known engineering and product gap |
 | [`docs/Memory.md`](docs/Memory.md) | Delivered feature log and verification record |
 | [`docs/Implementation-Plan.md`](docs/Implementation-Plan.md) | Remaining roadmap and sequencing |
 
