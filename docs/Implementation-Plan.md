@@ -385,7 +385,7 @@ were built and then removed (migrations `013`/`014`); ordering is personal and s
 - Docker Compose with API and nginx client images is delivered; CI validates the compose file, builds both images and smoke-tests the running stack. The Render service is described in `render.yaml` and matches the live settings.
 - Staging is live: `otion-api-staging` on Render runs `main` against the `otion_staging` Atlas database, and Vercel previews of the `staging` branch build against it.
 - Enforce HTTPS and WSS: both providers terminate TLS, and the client derives `wss://` from `VITE_SOCKET_URL`.
-- Centralized logs: `pino-http` emits structured request logs to the Render log stream; no third-party error tracker is wired up, so exception alerting still depends on the uptime probe and provider notifications.
+- Centralized logs: `pino-http` emits structured request logs to the Render log stream. Error tracking is wired through Sentry behind `SENTRY_DSN` and stays inert until a DSN exists, so today's exception alerting still rests on the uptime probe and provider notifications.
 - Uptime checks: `uptime.yml` probes `/api/health` and the web app every 30 minutes and fails on any non-`ok` payload.
 - Backups and restore drills: `backup.yml` dumps production daily, restores the archive into a scratch MongoDB, compares collection counts and keeps the artifact for seven days.
 - Deployment and rollback procedures are documented in `readme.md` and `docs/Architecture.md`; Render keeps every previous deploy available for an instant rollback.

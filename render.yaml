@@ -36,3 +36,8 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Optional: set it to enable Sentry error reporting; unset means no events.
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        sync: false

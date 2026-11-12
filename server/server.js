@@ -1,4 +1,7 @@
 require('dotenv').config();
+// Initialise error tracking before Express is required so its integration patches it.
+const monitoring = require('./config/monitoring');
+monitoring.initMonitoring();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -221,6 +224,8 @@ const stop = async () => {
   await flushAllDocuments();
   await new Promise((resolve) => io.close(resolve));
   await mongoose.disconnect();
+  // Give the reporter a chance to ship the last events before the process exits.
+  await monitoring.flush();
 };
 
 if (require.main === module) {

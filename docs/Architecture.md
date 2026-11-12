@@ -39,7 +39,7 @@ lives in [`Database.md`](./Database.md) and every HTTP/socket contract in [`API.
 | Data | MongoDB with Mongoose 9.9 | Hashed tokens, text index, TTL log, ordered migrations |
 | Collaboration | Yjs CRDT | Updates over authenticated sockets, snapshots plus compacted update log |
 | Delivery | GitHub Actions, Render, Vercel, Docker Compose | `verify`, `e2e`, `docker`, `deploy` jobs plus scheduled backup and uptime workflows |
-| Operations | Render health checks, GitHub Actions cron, logical backups | Health-gated restarts, 30-minute probes, daily restore drill |
+| Operations | Render health checks, GitHub Actions cron, logical backups, Sentry (opt-in) | Health-gated restarts, 30-minute probes, daily restore drill, DSN-gated error reporting |
 
 ## 2. Request flows
 
@@ -212,6 +212,7 @@ membership and sharing adds `guest` memberships.
 | Runtime | API `/api/health` reports database readiness; Render restarts on a failed health check and serves the app |
 | Backups | `backup.yml` dumps production daily, restores the archive into a scratch MongoDB, compares collection counts and keeps it for seven days |
 | Uptime | `uptime.yml` probes the API health endpoint and the web app every 30 minutes and fails loudly |
+| Errors | `config/monitoring.js` initialises Sentry only when `SENTRY_DSN` is set; Express 5xx errors, unhandled rejections and uncaught exceptions are reported with sensitive headers stripped |
 | Staging | `otion-api-staging` runs `main` against the `otion_staging` database; Vercel previews from the `staging` branch point at it |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy
@@ -230,5 +231,6 @@ themselves, so a push deploys without any CI credential.
 - Atlas' free tier offers no point-in-time recovery; recovery relies on the daily logical backup and its seven-day artifact retention.
 - The staging API runs on the free plan, so it sleeps when idle and its first request can take a minute.
 - No load or soak testing has been run against production.
+- Error tracking depends on an external Sentry project; without `SENTRY_DSN` the API logs structured errors only.
 - `table` and `file` block types are accepted by the validator but not rendered by the editor.
 - Workspace roles beyond `owner`/`guest` are reserved and have no management API.

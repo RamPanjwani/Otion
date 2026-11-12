@@ -199,8 +199,9 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   9 revisions, 1 comment with a mention, 2 notifications, 1 enabled public share whose printed token
   hashes to the stored SHA-256 value). A second run reports `Removed previous demo data: 3 account(s),
   8 note(s)` and leaves exactly one workspace and the same counts.
-- Server suite: **10/10 passing** locally (4 API/socket + 4 migration + 1 seed + 1 backup round trip,
-  ~22 s) against a real MongoDB; the API file was also re-run green after the Mongoose upgrade.
+- Server suite: **15/15 passing** locally (4 API/socket + 4 migration + 1 seed + 1 backup round trip
+  + 5 monitoring, ~25 s) against a real MongoDB; the API file was also re-run green after the
+  Mongoose upgrade.
 - Dependency audit: `npm audit --omit=dev` is **clean** in both packages after bumping `mongoose` to
   `^9.12.1` (four advisories, including prototype pollution via `Schema.prototype.virtual()`).
 - `render.yaml` parses as valid YAML; it now pins the live service's root (`server`), region
@@ -240,6 +241,12 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   `201`, and the probe row appeared in `otion_staging` while production stayed untouched (the probe
   was then deleted). Render auto-deploys staging from `main` (`bf628d5` live); Vercel previews of the
   `staging` branch are behind deployment protection and build with the branch-scoped staging URLs.
+- Error tracking is opt-in: `server/config/monitoring.js` initialises Sentry only when `SENTRY_DSN` is
+  present (never under `NODE_ENV=test`), captures Express 5xx errors through `expressIntegration`,
+  and scrubs `authorization`/`cookie`/`set-cookie`/`x-api-key`/`x-csrf-token` in `beforeSend`. Five
+  tests cover the inert default, DSN activation, test silence, a malformed DSN and a real Express
+  error delivered to a stand-in ingest endpoint. `render.yaml`, `server/.env.example` and the readme
+  document the DSN; the live services do not have one yet, so nothing is reported today.
 - CI after the operations work: run `43297308350` green on all four jobs (verify 1m5s, browser E2E
   1m21s, container smoke 46 s, deploy 12 s with the production migration check), and the remaining
   annotation is only GitHub's `ubuntu-latest` → Ubuntu 26 migration notice.
