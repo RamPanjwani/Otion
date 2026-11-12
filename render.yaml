@@ -5,7 +5,9 @@
 # Render prompts for them on a new Blueprint instance and keeps the dashboard values
 # on an existing one, so no credentials live in the repository.
 #
-# Apply with: Render Dashboard -> Blueprints -> New Blueprint Instance.
+# The service already exists (autoDeploy from GitHub `main`), so applying this is
+# only needed to re-create it. Apply with: Render Dashboard -> Blueprints -> New
+# Blueprint Instance.
 # Migrations are idempotent (`npm run migrate`); run them once per release from the
 # Render Shell or locally against the production URI. A `preDeployCommand` would
 # automate that but requires a paid instance type.
@@ -15,6 +17,9 @@ services:
     name: otion-api
     runtime: node
     rootDir: server
+    # Pinned to match the live otion-api service; leaving it out would provision a
+    # Blueprint service in Render's default region instead of Singapore.
+    region: singapore
     plan: free
     buildCommand: npm ci
     startCommand: npm start

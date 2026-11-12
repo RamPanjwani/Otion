@@ -194,7 +194,16 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   MongoDB; the API file was also re-run green after the Mongoose upgrade.
 - Dependency audit: `npm audit --omit=dev` is **clean** in both packages after bumping `mongoose` to
   `^9.12.1` (four advisories, including prototype pollution via `Schema.prototype.virtual()`).
-- `render.yaml` parses as valid YAML and matches the deployed service's build, start and health values.
+- `render.yaml` parses as valid YAML; it now pins the live service's root (`server`), region
+  (`singapore`), start command, free plan and Node 22, and proposes `npm ci` plus an `/api/health`
+  health check that the dashboard does not have yet (it builds with `npm install` and has no health
+  check path, so a Blueprint sync would tighten, not break, the service).
+- Delivery verified end to end on the providers after pushing `06bd601`: CI run `43284354037` went
+  green on all three jobs (server 8/8 and client 5/5 on Node 22, container smoke, deploy probe),
+  Render deployed that commit (`dep-dbr0lt17lnhs73egi0k0`, `trigger: new_commit`) to `live` in 38 s,
+  and Vercel built production deployment `otion-klgjdhers` (`Ready`, 7 s). Both platforms deploy
+  themselves from the GitHub integration, so `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL`
+  remain unset and their CI steps only log a skip.
 
 ## Remaining roadmap
 

@@ -203,14 +203,15 @@ membership and sharing adds `guest` memberships.
 | --- | --- |
 | Pull request | `verify`: server tests (API/socket, migrations, seed) + audit, client lint + unit tests + build + audit |
 | Image build | `docker`: compose config validation, both images built, stack booted, health + SPA smoke test |
-| Merge to `main` | `deploy`: optional Render/Vercel deploy hooks, production health probe |
+| Merge to `main` | Render and Vercel deploy the commit through their Git integrations; the `deploy` job re-triggers optional hooks and probes production health |
 | Runtime | API `/api/health` reports database readiness; Render and Vercel serve the app |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy
 cannot silently mutate production data. The API service itself is described in `render.yaml`
-(root `server`, `npm ci` / `npm start`, health `/api/health`, Node 22); `MONGO_URI` and `JWT_SECRET`
-are declared `sync: false` so their values stay in the Render dashboard. The client remains a Vercel
-static build described by `client/vercel.json`.
+(root `server`, region `singapore`, `npm ci` / `npm start`, health `/api/health`, Node 22); `MONGO_URI`
+and `JWT_SECRET` are declared `sync: false` so their values stay in the Render dashboard. The client
+remains a Vercel static build described by `client/vercel.json`. Both providers watch `main`
+themselves, so a push deploys without any CI credential.
 
 ## 8. Known limitations
 

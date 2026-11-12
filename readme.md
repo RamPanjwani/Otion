@@ -174,9 +174,10 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 
 **API — Render**
 
-- [`render.yaml`](render.yaml) declares the service: root directory `server`, build `npm ci`, start
-  `npm start`, health check `/api/health`, Node 22. Apply it with Render → Blueprints → New Blueprint
-  Instance, or keep configuring the existing service by hand with the same values.
+- [`render.yaml`](render.yaml) declares the service: root directory `server`, region `singapore`,
+  build `npm ci`, start `npm start`, health check `/api/health`, Node 22. The service already exists
+  and deploys itself on every push to `main`, so the blueprint only matters if it has to be
+  re-created; apply it with Render → Blueprints → New Blueprint Instance.
 - Environment: `NODE_ENV=production`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI`
   (Atlas) and `JWT_SECRET`. The two secrets are `sync: false` in the blueprint, so Render prompts for
   them and they never enter the repository.
@@ -186,6 +187,7 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 **Client — Vercel**
 
 - Root directory `client`, framework Vite, build `npm run build`, output `dist`.
+- Production deploys come from the Vercel Git integration on pushes to `main`.
 - Environment: `VITE_API_URL=https://otion-api.onrender.com/api`,
   `VITE_SOCKET_URL=https://otion-api.onrender.com`.
 - `client/vercel.json` rewrites every path to `index.html` for client-side routing.
@@ -198,9 +200,11 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
    script), server audit, client install, lint, unit tests, production build, client audit.
 2. **docker** — validates `docker-compose.yml`, builds both images, boots MongoDB + API + nginx and
    probes `/api/health` and the SPA through the client container.
-3. **deploy** — on `main` only, triggers the Render and Vercel deploy hooks when
-   `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL` secrets exist, then checks that the
-   production API answers. When a secret is absent the corresponding step logs a skip instead of failing.
+3. **deploy** — on `main` only. Render and Vercel deploy the push themselves (Render `autoDeploy`
+   plus the Vercel Git integration), so this job only fires the optional
+   `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL` hooks — handy for re-deploying without a new
+   commit — and then checks that the production API answers. When a secret is absent the
+   corresponding step logs a skip instead of failing.
 
 ## Contributing
 
