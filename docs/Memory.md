@@ -254,6 +254,11 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   throwaway key that was then removed, leaving `JWT_SECRET`, `MONGO_URI`, `CLIENT_URLS`, `NODE_ENV`;
   production holds `CLIENT_URL`, `JWT_SECRET`, `MONGO_URI`, `NODE_ENV`. An env-var write triggers a
   redeploy, so the docs point at the API rather than a flag that does not exist.
+- The staging refresh has run against production: workflow run `43306045359` copied 34 documents in
+  17 collections into `otion_staging`, scrubbed 3 accounts and verified the collection counts.
+  Production contains no seeded demo accounts, so staging now has no `demo@otion.app` — only
+  `user-<id>@staging.otion.invalid` logins with `OtionStaging123!`, which was confirmed by signing in
+  to the staging API (`200`, token issued). Note text is copied as-is; only identities are rewritten.
 - Browser error tracking mirrors the server: `client/src/services/monitoring.js` imports
   `@sentry/react` lazily and only when `VITE_SENTRY_DSN` is set, so without a DSN the SDK sits in an
   unused 454 kB chunk that is never requested (the entry bundle measures 388.7 kB either way). The

@@ -313,10 +313,13 @@ retention is the recovery story: anything older than a week is gone.
 **Staging refresh.** `.github/workflows/staging-refresh.yml` runs weekly (and on demand) through
 `npm run sync:staging`: it dumps production, rewrites emails, names, avatars, password hashes,
 invitation tokens and public-share tokens, restores the result into staging (clearing its collections
-first) and then checks that every collection still holds the same number of documents. The three
-seeded demo accounts keep their documented password so the demo login keeps working; every other
-account becomes `user-<id>@staging.otion.invalid` with the shared staging password. The job needs a
-`STAGING_MONGO_URI` secret alongside `PRODUCTION_MONGO_URI` and skips itself if either is missing.
+first) and then checks that every collection still holds the same number of documents. Seeded demo
+accounts keep their documented password so the demo login keeps working when they exist in the
+source; every other account becomes `user-<id>@staging.otion.invalid` with the shared staging
+password, and the run prints that address. Because production holds only real accounts, a refresh
+leaves staging with generated logins and no `demo@otion.app` — run `npm run seed` against staging if
+you want the demo graph back. The job needs a `STAGING_MONGO_URI` secret alongside
+`PRODUCTION_MONGO_URI` and skips itself if either is missing.
 
 ```bash
 cd server
