@@ -1,16 +1,26 @@
-# React + Vite
+# Otion client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite 8 + Tailwind 4 single-page app for [Otion](../readme.md). It talks to the Express API
+over REST (Axios) and Socket.IO, and edits notes as Yjs CRDT documents.
 
-Currently, two official plugins are available:
+```bash
+npm install
+cp .env.example .env      # VITE_API_URL=http://localhost:5000/api, VITE_SOCKET_URL=http://localhost:5000
+npm run dev               # http://localhost:5173
+npm run lint
+npm test
+npm run build             # emits dist/ for Vercel or the nginx Docker image
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Environment:
 
-## React Compiler
+| Variable | Default in dev | Purpose |
+| --- | --- | --- |
+| `VITE_API_URL` | `http://localhost:5000/api` | REST base URL; `production` builds fall back to `/api` |
+| `VITE_SOCKET_URL` | `http://localhost:5000` | Socket origin; empty means same origin (nginx proxies `/socket.io/`) |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Structure and conventions are documented in [`docs/Architecture.md`](../docs/Architecture.md) and
+[`docs/Rules.md`](../docs/Rules.md). API contracts: [`docs/API.md`](../docs/API.md).
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Production: <https://otion-nine.vercel.app> (project root directory `client`, build `npm run build`,
+output `dist`, `vercel.json` rewrites all paths to `index.html`).

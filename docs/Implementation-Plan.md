@@ -1,20 +1,20 @@
 # Otion Improvement Implementation Plan
 
-## Implementation status — 2026-11-03
+## Implementation status — 2026-11-12
 
 | Phase | Status | Delivered in this implementation |
 | --- | --- | --- |
-| 0 — Stabilization | Substantially complete | Validation, security middleware, structured errors/logs, indexes, migrations, CI, API/socket integration tests, audits. Browser E2E remains. |
+| 0 — Stabilization | Substantially complete | Validation, security middleware, structured errors/logs, indexes, migrations, CI, API/socket integration tests, migration-runner and seed tests, clean audits. Browser E2E remains. |
 | 1 — Workspaces/preferences | Complete | Workspace models/UI/migration, membership discovery, personal favorites, recent-open timestamps. |
 | 2 — CRDT collaboration | Complete | Yjs incremental updates, snapshots/update log, reconnect merge, stable block IDs, per-operation auth, JSON compatibility. |
 | 3 — Version history | Complete | Automatic/manual revisions, timeline, protected restore, pre-restore preservation, undo/redo. |
 | 4 — Rich editor | Substantially complete | Core block set, slash menu, sanitized paste, shortcuts, conflict-safe inline marks, links, and external-URL images. Object uploads are intentionally excluded; block drag/multi-block operations remain. |
-| 5 — Hierarchy/navigation | Partial | Nested tree, drag-to-reparent, cycle checks, descendant archive/restore, duplication API. Bulk actions/templates remain. |
+| 5 — Organization/navigation | Complete (flat by decision) | Personal drag ordering, favourites and recents, archived/trash views with bulk actions, duplication. Nesting was delivered then removed in favour of a flat workspace; templates remain future work. |
 | 6 — Advanced sharing | Partial | Immediate roles/revocation, commenter role, secure pending invitation tokens, hashed random public links, expiry, and password protection. Automated email delivery, groups, and audit log remain. |
 | 7 — Comments/notifications | Partial | Page comments, mentions, resolve/reopen, realtime refresh, and in-app notifications. Threaded/block-targeted UI, email, and preferences remain. |
 | 8 — Search | Core complete | Permission-scoped API, title/block search, workspace filter, previews, debounced UI, fallback index. Atlas Search deployment configuration remains. |
 | 9 — UX/accessibility/accounts | Partial | Save status, responsive UI, confirmation password, dark mode, reduced motion, accessible modal focus handling, profile/password/data export/account deletion. Recovery, verification, active sessions, and full audit remain. |
-| 10 — Production hardening | Partial | CORS, Helmet, rate limits, redaction, CI, audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose definitions. Staging, monitoring, backups, and load tests remain. |
+| 10 — Production hardening | Partial | CORS, Helmet, rate limits, redaction, CI (verify + container smoke + deploy hooks), audits, indexes, compaction, graceful shutdown, health checks, route splitting, Docker/Nginx/Compose (validated in CI). Staging, monitoring, backups, and load tests remain. |
 
 This roadmap delivers the planned improvements incrementally. Every phase must remain deployable and pass authorization, API, realtime, and browser tests before the next phase begins.
 
@@ -26,7 +26,7 @@ This roadmap delivers the planned improvements incrementally. Every phase must r
 - Add Helmet, rate limiting, structured logging, and production CORS allowlists.
 - Standardize API error codes and responses.
 - Add MongoDB indexes for users, notes, permissions, and archive queries.
-- Add a migration mechanism for schema changes.
+- Add a migration mechanism for schema changes, with automated coverage of the runner.
 
 ### Testing
 
@@ -40,6 +40,8 @@ This roadmap delivers the planned improvements incrementally. Every phase must r
 ### Infrastructure
 
 - Add CI checks for server syntax, ESLint, client builds, tests, and dependency audits.
+- Cover the migration runner and the demo seed script in the server suite so schema and fixture
+  regressions fail CI.
 - Separate development, staging, and production configuration.
 
 ### Exit criteria
@@ -148,7 +150,7 @@ This is the most important architectural upgrade.
 - Support manually named versions.
 - Add a revision timeline and preview.
 - Restore an earlier version without deleting later history.
-- Audit title, icon, cover, and content changes.
+- Audit title, icon, and content changes.
 - Add undo and redo for the active editing session.
 
 ### Exit criteria
@@ -195,32 +197,30 @@ This is the most important architectural upgrade.
 - Paste and import cannot inject unsafe markup.
 - External images render safely and remain editable in realtime.
 
-## Phase 5 — Page hierarchy and workspace navigation
+## Phase 5 — Page organization and workspace navigation
 
-### Features
+Status: delivered as a deliberately flat workspace. Nested documents, breadcrumbs and reparenting
+were built and then removed (migrations `013`/`014`); ordering is personal and stored in
+`UserNotePreference.sortOrder`.
 
-- Add nested documents and subpages.
-- Add an expandable sidebar tree.
-- Support dragging documents between parents.
-- Prevent cycles in the page hierarchy.
-- Improve breadcrumb navigation.
-- Add Favorites and Recently Opened sections.
-- Add templates and document duplication.
-- Add bulk archive, restore, move, and delete actions.
-- Add document context menus.
+### Delivered
 
-### Backend behavior
+- Flat sidebar with Favorites and Recently Opened sections.
+- Drag ordering and move controls, persisted per user and synchronized across tabs.
+- Archived/trash views with bulk archive, bulk restore, bulk delete and empty trash.
+- Document duplication and context menus.
 
-- Validate parent-document ownership and workspace membership.
-- Archive descendants consistently.
-- Define whether permanent deletion cascades or reparents children.
-- Add hierarchy indexes.
+### Future work
 
-### Exit criteria
+- Page templates.
+- Workspace-level settings and member management.
+- Optional grouping labels (not nesting) if users ask for it.
 
-- Large trees remain responsive.
-- Dragging cannot create circular relationships.
-- Archive and restore behavior is predictable for descendants.
+### Exit criteria (met)
+
+- Ordering never mutates another user's sidebar.
+- Archive and restore affect exactly the selected notes.
+- Large workspaces stay responsive without hierarchy plumbing.
 
 ## Phase 6 — Advanced sharing and invitations
 
@@ -382,7 +382,7 @@ This is the most important architectural upgrade.
 
 ### Operations
 
-- Add Docker configuration.
+- Docker Compose with API and nginx client images is delivered; CI validates the compose file, builds both images and smoke-tests the running stack. The Render service is described in `render.yaml`. Staging, monitoring, backups and load tests remain.
 - Maintain a staging environment.
 - Enforce HTTPS and WSS.
 - Add centralized logs and error monitoring.

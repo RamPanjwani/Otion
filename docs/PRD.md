@@ -1,133 +1,165 @@
-# Product Requirements Document (PRD) — Otion Workspace
+# Product Requirements Document (PRD) — Otion
 
-## 1. Context & Purpose
-Otion is a full-stack, real-time collaborative Notion-like workspace. This document serves as the single source of truth for AI coding agents to implement, refactor, and extend the project codebase safely without breaking system boundaries.
+Status: implemented. This document describes the product as it exists in the repository and in
+production. Data details live in [`Database.md`](./Database.md); endpoint contracts in
+[`API.md`](./API.md); runtime structure in [`Architecture.md`](./Architecture.md).
 
----
+Live product: <https://otion-nine.vercel.app> · API: <https://otion-api.onrender.com/api>
 
-## 2. Tech Stack Specification
+## 1. Vision
 
-* **Frontend:** React 18, Vite, Tailwind CSS, Lucide React (Icons)
-* **Backend:** Node.js, Express.js
-* **Database:** MongoDB with Mongoose ORM
-* **Real-time Engine:** Socket.io (WebSockets)
-* **Authentication:** JWT (JSON Web Tokens) with HTTP Authorization Headers
-* **State Management:** React Context API (`AuthContext`) + Custom Hooks (`useAuth`)
+Otion is a focused notes workspace for people who want a fast, quiet document surface and real
+collaboration without a heavyweight project-management tool. It combines a block editor with
+markdown shortcuts, a flat searchable page list, conflict-safe realtime editing, and sharing that
+ranges from per-person roles to revocable read-only public links.
 
----
+## 2. Users and jobs
 
-## 3. Directory & File Architecture Map
+| Persona | Job to be done |
+| --- | --- |
+| Individual note-taker | Capture and organise pages quickly, favourite the important ones, search everything |
+| Small team | Write the same page together in realtime, comment on drafts, restore an earlier version |
+| Reviewer / stakeholder | Read a page as a viewer or through a public link without an account |
+| Document owner | Control who can read, comment or edit; revoke access; publish read-only |
+
+## 3. Scope
+
+### 3.1 Implemented
+
+- Email/password accounts with JWT sessions, profile editing, password change, JSON data export and
+  account deletion.
+- One personal workspace per account, with owner/admin/member/guest roles modelled in the data layer.
+- Block editor: paragraph, heading 1–3, bullet, numbered, task, quote, callout, divider, code; inline
+  bold/italic/underline/strikethrough/code/link; slash command menu; markdown shortcuts; undo/redo.
+- Realtime co-editing with Yjs CRDTs, live cursors, selection highlights, presence avatars, and
+  authorization re-checked on every update.
+- Version history with automatic throttled revisions, named manual versions, and restore.
+- Sharing: invite by email, roles (editor/commenter/viewer), role changes, revocation, pending
+  invitations for unregistered emails, share notifications.
+- Public links: per-note publish/unpublish, token rotation, optional password, optional expiry.
+- Comments with @mentions, mention notifications, resolve/unresolve.
+- Notifications feed with unread state.
+- Notes management: create, rename, icon, save, duplicate, favourite, drag reorder, per-user sidebar
+  state, archive, bulk archive, trash, restore, bulk restore, delete, empty trash.
+- Dashboard search across titles and block text, filters for archived and favourites.
+- Dark/light theme, focus mode, sidebar collapse, keyboard shortcut reference, responsive layout,
+  reduced-motion support.
+- Demo seed script, ordered migrations, integration tests, CI with container smoke tests and
+  optional deploy hooks.
+
+### 3.2 Out of scope (current)
+
+- Nested pages / hierarchies — pages are intentionally flat, ordering is per user.
+- Real-time collaborative workspaces beyond note sharing (workspace settings UI, member management).
+- Email delivery of invitations and notifications (links are surfaced in the UI instead).
+- File and image uploads (image blocks accept external HTTPS URLs; `file`/`table` blocks are validated
+  but not rendered).
+- Refresh-token rotation, session management UI, OAuth/SSO.
+- Server-side pagination for large note collections.
+- Mobile native apps; the web app is responsive.
+
+## 4. Stack
+
+| Layer | Choice | Version |
+| --- | --- | --- |
+| UI | React, React Router, Vite | 19.2, 7.x, 8.2 |
+| Styling | Tailwind CSS 4 with CSS-first theme tokens | 4.3 |
+| Icons / motion | lucide-react, Motion | current |
+| Editor | Custom block editor over Yjs (`Y.Doc`, `Y.Text`, `Y.Array`) | Yjs 13.6 |
+| HTTP client | Axios with interceptors | current |
+| API | Node.js, Express | 20+ (Docker/CI), 5.2 |
+| Realtime | Socket.IO | 4.8 |
+| Data | MongoDB + Mongoose | 7+ / 9.9 |
+| Auth | bcryptjs + jsonwebtoken | current |
+| Validation | Zod | current |
+| Tests | node:test + supertest (server), node:test (client) | — |
+| Delivery | GitHub Actions, Render, Vercel, Docker/nginx | — |
+
+No state-management library, no UI kit, no ORM beyond Mongoose, no upload service.
+
+## 5. Data model (summary)
+
+Full collections, indexes and cascades: [`Database.md`](./Database.md).
 
 ```text
-otion/
-├── client/
-│   ├── public/             # Static assets (favicons, SVGs)
-│   ├── src/
-│   │   ├── assets/         # App assets & images
-│   │   ├── components/     # UI components (Editor, Sidebar, Navbar, Modal, ShareModal, Loading)
-│   │   ├── context/        # AuthContext.jsx (global auth state)
-│   │   ├── hooks/          # Custom hooks (useAuth.js)
-│   │   ├── pages/          # Route views (Home, Login, Register, Dashboard, NoteEditor, Trash)
-│   │   ├── services/       # Axios client (api.js) & Socket setup (socket.js)
-│   │   ├── utils/          # Helper utilities & dynamic formatters
-│   │   ├── App.jsx         # App router & layout routes
-│   │   └── main.jsx        # Entry point
-│   ├── package.json
-│   └── vite.config.js
-└── server/
-    ├── config/             # Database connection (db.js)
-    ├── controllers/        # authController, noteController, shareController
-    ├── middleware/         # authMiddleware (JWT check), errorMiddleware
-    ├── models/             # Mongoose models (User, Note, SharePermission)
-    ├── routes/             # authRoutes, noteRoutes, shareRoutes
-    ├── utils/              # Token generation (generateToken.js)
-    ├── .env                # Secret environment variables
-    └── server.js           # Server listener & Socket.io server initialization
-
+User 1---* Workspace 1---* WorkspaceMembership *---1 User
+User 1---* Note *---1 Workspace
+Note 1---* SharePermission *---1 User        (unique noteId+userId)
+Note 1---1 UserNotePreference *---1 User     (unique user+note)
+Note 1---* NoteRevision
+Note 1---1 PublicShare
+Note 1---* Comment *---1 User                (+ parentComment for replies)
+User 1---* Notification *---1 User           (recipient + actor)
+Note 1---* Invitation
+Note 1---1 CollaborationState  (Yjs snapshot, state vector, sequence)
+Note 1---* CollaborationUpdate (TTL 30 days, compacted into the snapshot)
 ```
 
----
+Key note fields: `title`, `icon`, `content` (validated block array, schema version 3),
+`revisionCounter`, `user` (owner), `workspace`, `isArchived`, `isPublished`, timestamps.
+Sharing state lives in `SharePermission` (role) and `PublicShare` (SHA-256 token hash, enabled,
+optional bcrypt password hash and expiry). Tokens are never stored in plaintext.
 
-## 4. Data Schemas (Mongoose Models)
+## 6. API surface (summary)
 
-### `User.js`
+Complete request/response reference: [`API.md`](./API.md).
 
-* `name`: String (Required)
-* `email`: String (Required, Unique)
-* `password`: String (Required, Hashed with bcrypt)
-* `avatarUrl`: String (Optional)
-* `timestamps`: true
+| Group | Base | Highlights |
+| --- | --- | --- |
+| Auth & account | `/api/auth` | register (with invitation token), login, me, profile, password, export, delete account |
+| Workspaces | `/api/workspaces` | list memberships (read-only) |
+| Notes | `/api/notes` | list, create, read, save, delete, archive/restore, preferences, duplicate, reorder, bulk archive, trash empty/restore-all/restore-many/delete-many |
+| Revisions | `/api/notes/:id/revisions` | list, create named version, restore |
+| Sharing | `/api/share` | user search, invite, collaborators, role change, revoke access/invitation, publish |
+| Public | `/api/public/:token` | anonymous read, optional unlock |
+| Search | `/api/search` | title + block text, archived/favourite filters |
+| Comments | `/api/comments` | list per note, create with mentions, resolve |
+| Notifications | `/api/notifications` | list, mark read (single or all) |
+| Health | `/api/health` | liveness and database readiness |
 
-### `Note.js`
+Authentication is `Authorization: Bearer <jwt>`; every error uses one envelope
+(`{ message, error: { code, message, details?, requestId } }`). Role rules: owner and editor write,
+commenter and viewer read and comment, only the owner manages sharing and archival. Non-owners
+without access receive `404` rather than `403`.
 
-* `title`: String (Required, Default: "Untitled")
-* `content`: Array / JSON Object (Block structure array or raw text)
-* `icon`: String (Optional emoji identifier)
-* `coverImage`: String (Optional URL)
-* `user`: Schema.Types.ObjectId (Ref: 'User', Owner)
-* `parentDocument`: Schema.Types.ObjectId (Ref: 'Note', Nullable for root notes)
-* `isArchived`: Boolean (Default: false)
-* `isPublished`: Boolean (Default: false)
-* `timestamps`: true
+## 7. Realtime protocol (summary)
 
-### `SharePermission.js`
+Socket.IO with JWT handshake auth. Rooms: `note:<id>` and `user:<id>`. Client emits `join-note`,
+`leave-note`, `collab-update` (Yjs update, owner/editor only), `cursor-move`, `selection-change`.
+Server emits `collab-sync`, `collab-update`, `collab-error`, `presence-update`, `cursor-move`,
+`selection-change`, `comments-sync`, `document-saved`, `note-sync`, `note-remove`, `note-order`,
+`notification`, `permission-changed`, `access-revoked`, `account-deleted`. Exact payloads are in
+[`API.md`](./API.md) §7.
 
-* `noteId`: Schema.Types.ObjectId (Ref: 'Note', Required)
-* `userId`: Schema.Types.ObjectId (Ref: 'User', Required)
-* `role`: String (Enum: `['editor', 'viewer']`, Default: `'viewer'`)
-* `timestamps`: true
+## 8. Experience requirements
 
----
+- First paint of the app shell under a second on a broadband connection; routes are code-split.
+- Autosave after 500 ms of idle typing through the CRDT channel; explicit saves create a revision.
+- Sidebar shows the flat page list with favourites first, then personal order; archive and trash are
+  separate views.
+- Document header holds title, icon, favourite, collaborators, publish state, version history, share.
+- Editor keeps focus mode, dark mode and collapsed sidebar as per-device/user preferences.
+- Public pages render read-only with a password gate when configured and never expose note IDs.
+- Every destructive action is confirmed; failures surface a dismissible toast with the API message.
 
-## 5. API Route Contracts
+Design tokens, layout rules and approved libraries: [`Rules.md`](./Rules.md).
 
-### Auth Routes (`/api/auth`)
+## 9. Non-functional requirements
 
-* `POST /register`: Accepts `{ name, email, password }` -> Returns `{ _id, name, email, token }`
-* `POST /login`: Accepts `{ email, password }` -> Returns `{ _id, name, email, token }`
-* `GET /me`: Requires JWT header -> Returns current user data
+| Concern | Requirement |
+| --- | --- |
+| Security | Hashed credentials and tokens at rest, CORS allowlist, Helmet, per-IP rate limits, Zod validation on every input, authorization re-checked on writes and socket events |
+| Privacy | Public links revocable with token rotation and optional expiry; account export and deletion available |
+| Reliability | CRDT updates persisted before compaction; restore is itself versioned; health endpoint reports database readiness |
+| Performance | Debounced writes, compacted update log, indexed queries, search limited to 50 results, revisions capped at 100 |
+| Operability | Ordered migrations run explicitly, structured request logs with redacted auth headers, CI with container smoke tests |
+| Accessibility | Keyboard-first editing with documented shortcuts, visible focus rings, `prefers-reduced-motion` support, semantic buttons and labels |
 
-### Note Routes (`/api/notes`)
+## 10. Success criteria
 
-* `GET /`: List all root non-archived notes created by or shared with the user
-* `POST /`: Create a new note `{ title?, parentDocument? }`
-* `GET /:id`: Fetch a specific note by ID (verifies ownership or permission)
-* `PUT /:id`: Update note content, title, icon, cover image, or parent
-* `PATCH /:id/archive`: Soft-delete note (sets `isArchived: true`)
-* `PATCH /:id/restore`: Restore soft-deleted note (sets `isArchived: false`)
-* `DELETE /:id`: Permanently remove note from database
-
-### Share Routes (`/api/share`)
-
-* `POST /:noteId/invite`: Accepts `{ email, role }` -> Assigns `SharePermission`
-* `GET /:noteId/collaborators`: Retrieves list of allowed users and roles
-* `DELETE /:noteId/user/:userId`: Revokes access for a specific user
-* `PATCH /:noteId/public`: Toggles `isPublished` on target note
-
----
-
-## 6. WebSocket Protocol Specifications (Socket.io)
-
-* `join-note`: Payload `{ noteId, user }`. Joins dynamic room `note:${noteId}`.
-* `leave-note`: Payload `{ noteId, user }`. Leaves dynamic room.
-* `send-changes`: Payload `{ noteId, delta/content }`. Broadcasts content update to `note:${noteId}` excluding sender (`socket.broadcast.to`).
-* `receive-changes`: Listener payload `{ delta/content }`. Applies incoming content changes to active local document state.
-* `cursor-move`: Payload `{ noteId, user, range/position }`. Broadcasts real-time multi-user cursor coordinates.
-
----
-
-## 7. AI Agent Execution Rules & Constraints
-
-When implementing or modifying code in this codebase, adhere strictly to the following directives:
-
-1. **State Isolation:** Keep authentication state strictly contained inside `AuthContext.jsx`. Do not store unencrypted auth tokens in local storage without proper fallback checks.
-2. **Error Handling:** All Express backend controllers must handle async errors using `express-async-handler` or try-catch blocks delegating to `errorMiddleware.js`.
-3. **Environment Security:** Never hardcode secrets, ports, or URIs. Always reference `process.env.MONGO_URI`, `process.env.JWT_SECRET`, and `process.env.PORT`.
-4. **CSS Token Usage:** Preserve existing UI design tokens:
-* Background: `#FCF9F8`
-* Primary Text: `#1C1B1B`
-* Card Radius: `rounded-xl` / `0.5rem` (6px)
-* Sidebar Width: Fixed `240px`
-
-
-5. **Component Scaffolding:** Maintain modular separation—do not inline complex child modals inside parent page components; place them in `client/src/components/`.
+- A new user can register, create a page, format text, share it and find it again by search without
+  documentation.
+- Two signed-in collaborators see each other's edits, cursors and presence within ~200 ms on
+  broadband, with no lost keystrokes.
+- Revoking access or archiving a note immediately stops edits from the affected collaborator.
+- `npm test`, `npm run lint` and `npm run build` pass in CI together with the container smoke job.

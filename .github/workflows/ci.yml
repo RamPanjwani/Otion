@@ -8,8 +8,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
+    name: Lint, test and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -38,13 +43,17 @@ jobs:
         working-directory: server
         run: npm ci
 
+      - name: Syntax check the server entry point
+        working-directory: server
+        run: npm run check
+
       - name: Test server authorization and realtime contracts
         working-directory: server
         env:
           TEST_MONGO_URI: mongodb://127.0.0.1:27017
         run: npm test
 
-      - name: Check production dependency vulnerabilities
+      - name: Check server production dependency vulnerabilities
         working-directory: server
         run: npm audit --omit=dev --audit-level=critical
 
@@ -56,6 +65,10 @@ jobs:
         working-directory: client
         run: npm run lint
 
+      - name: Test client units
+        working-directory: client
+        run: npm test
+
       - name: Build client
         working-directory: client
         run: npm run build
@@ -63,3 +76,114 @@ jobs:
       - name: Check client production dependency vulnerabilities
         working-directory: client
         run: npm audit --omit=dev --audit-level=critical
+
+  docker:
+    name: Build and smoke-test containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate the Compose file
+        env:
+          JWT_SECRET: ci-compose-validation-secret
+        run: docker compose config --quiet
+
+      - name: Build API image
+        run: docker build --tag otion-api:ci ./server
+
+      - name: Build client image
+        run: docker build --tag otion-client:ci ./client
+
+      - name: Boot the stack and probe it through nginx
+        run: |
+          set -euo pipefail
+          docker network create otion-ci
+          docker run --detach --name mongo --network otion-ci mongo:7
+
+          for attempt in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1; then
+              echo "MongoDB ready after ${attempt} attempt(s)"
+              break
+            fi
+            sleep 2
+          done
+
+          docker run --detach --name server --network otion-ci \
+            --env NODE_ENV=production \
+            --env PORT=5000 \
+            --env MONGO_URI=mongodb://mongo:27017/otion \
+            --env JWT_SECRET=ci-smoke-test-secret-value \
+            --env CLIENT_URLS=http://127.0.0.1:8080 \
+            otion-api:ci
+
+          docker run --detach --name client --network otion-ci --publish 8080:80 otion-client:ci
+
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+              echo "Stack healthy after ${attempt} attempt(s)"
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Health through nginx:"
+          curl -fsS http://127.0.0.1:8080/api/health
+          echo
+          curl -fsS http://127.0.0.1:8080/ | grep -qi "otion"
+          echo "SPA served by nginx with /api proxying"
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          docker logs server || true
+          docker logs client || true
+          docker logs mongo || true
+
+  deploy:
+    name: Deploy to Render and Vercel
+    needs: [verify, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Trigger the Render deployment
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "${RENDER_DEPLOY_HOOK_URL}" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not configured; skipping the Render deploy hook."
+            exit 0
+          fi
+          curl -fsS --retry 3 --retry-delay 5 -X POST "${RENDER_DEPLOY_HOOK_URL}"
+          echo "Render deployment triggered."
+
+      - name: Trigger the Vercel deployment
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "${VERCEL_DEPLOY_HOOK_URL}" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL is not configured; skipping the Vercel deploy hook."
+            exit 0
+          fi
+          curl -fsS --retry 3 --retry-delay 5 -X POST "${VERCEL_DEPLOY_HOOK_URL}"
+          echo "Vercel deployment triggered."
+
+      - name: Wait for the production API
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /tmp/otion-health.json -w '%{http_code}' --max-time 30 https://otion-api.onrender.com/api/health || true)
+            if [ "${status}" = "200" ]; then
+              echo "Production API is healthy:"
+              cat /tmp/otion-health.json
+              exit 0
+            fi
+            echo "Attempt ${attempt}: HTTP ${status}; waiting for the API and database."
+            sleep 5
+          done
+          echo "Production API did not become healthy. Last response:"
+          cat /tmp/otion-health.json || true
+          exit 1

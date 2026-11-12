@@ -1,110 +1,205 @@
 # Otion implementation memory
 
-Last verified: 2026-11-03 (Asia/Calcutta)
+Last verified: 2026-11-13
+
+This file records what exists, the contracts it exposes, and how it was verified. Deeper references:
+[`Database.md`](./Database.md) (schema), [`API.md`](./API.md) (REST + Socket.IO), [`Phases.md`](./Phases.md)
+(build history), [`Implementation-Plan.md`](./Implementation-Plan.md) (remaining roadmap).
 
 ## Delivered foundation
 
-- [x] React/Vite/Tailwind client with responsive 240px workspace shell.
-- [x] Express, Mongoose, Socket.io, JWT/bcrypt authentication, request validation, structured errors, Helmet, rate limits, production CORS allowlist, and redacted request logging.
-- [x] Registration confirmation-password validation and bearer-token session handling.
-- [x] CI workflow for server tests/audit and client lint/build/audit.
-- [x] Ordered MongoDB migration runner; active migrations `001`–`009` and `011`–`014` applied to the configured database (retired asset migration `010` is superseded by cleanup migration `012`).
-- [x] Luma-inspired UI/UX system adapted to Otion: ambient gradients, semantic light/dark tokens, glass/elevated surfaces, responsive application chrome, Motion transitions with reduced-motion support, Lucide icon normalization, and Zod-powered authentication validation.
+- [x] React 19 + Vite 8 + Tailwind 4 client with a responsive workspace shell (fixed 15 rem sidebar,
+      collapsible to an icon rail on desktop, full-width drawer on mobile).
+- [x] Express 5 API with Mongoose 9, Socket.IO 4, JWT/bcrypt authentication, Zod request validation,
+      structured error envelope, Helmet, per-route rate limits, production CORS allowlist, and
+      request logs with redacted authorization headers.
+- [x] Registration with confirmation-password validation and optional invitation-token acceptance;
+      bearer-token session handling with `INVALID_TOKEN` recovery on the client.
+- [x] Account management: profile update, password change, JSON data export, password-confirmed
+      account deletion with cascade cleanup and socket eviction.
+- [x] Ordered MongoDB migration runner with 13 active migrations (`001`–`014`, `010` retired).
+- [x] One personal workspace per account with owner/admin/member/guest memberships; workspace
+      creation and switching are intentionally not exposed.
+- [x] Demo seed script (`server/scripts/seed.js`, `npm run seed`) that is idempotent for its three
+      demo accounts and creates a workspace, seven notes, shares across all roles, revisions,
+      preferences, a comment with a mention, notifications, and a published public link.
+- [x] Documentation set: PRD, Architecture, Database, API, Rules, Phases, Memory, Implementation
+      Plan, plus root and per-package READMEs and env templates.
 
-## Workspace and notes
+## Workspace, notes and navigation
 
-- [x] `Workspace`, `WorkspaceMembership`, and `UserNotePreference` models.
-- [x] One personal workspace per user; workspace switching and additional workspace creation are intentionally unavailable.
-- [x] Favorites are per-user; viewers can favorite notes without modifying shared note state.
-- [x] Recently opened timestamps with dashboard cards and compact sidebar navigation, plus live note summaries.
-- [x] Flat, user-specific note ordering with drag handles, move-up/move-down controls, realtime order synchronization, and no note hierarchy.
-- [x] Owner-only multi-select on the dashboard with a validated bulk move-to-Trash API; shared notes cannot be bulk deleted by collaborators.
-- [x] Collapsible desktop sidebar with a persisted icon-rail preference; mobile continues to use the full-width navigation drawer.
-- [x] Every note receives a default emoji; migration `013` backfilled existing notes and flattened legacy parent relationships.
-- [x] Note covers were removed from the UI, API contracts, persistence schema, revision snapshots, and existing Atlas data by migration `014`.
-- [x] Archiving/restoring affects only the selected note; permanent deletion removes only that note.
-- [x] Note duplication backend contract and editor action that copies the current in-memory note into the user's workspace.
+- [x] `Workspace`, `WorkspaceMembership`, and `UserNotePreference` models; favorites, sidebar state
+      and last-opened timestamps are per user.
+- [x] Flat, user-specific ordering with drag handles and move controls, persisted through
+      `PATCH /api/notes/reorder` and broadcast as `note-order`.
+- [x] Notes are intentionally flat — no nesting, parent links, breadcrumbs or reparenting.
+- [x] Owner-only multi-select archive with `PATCH /api/notes/archive-many`.
+- [x] Trash view with restore, bulk restore, permanent delete, bulk delete and empty-trash
+      (`/trash/restore-all`, `/trash/restore-many`, `/trash/delete-many`, `/trash/empty`); archiving
+      affects only the selected notes.
+- [x] Every note receives a default emoji; migration `013` backfilled existing notes and flattened
+      legacy parent relationships.
+- [x] Note covers were removed from the UI, persistence schema and revision snapshots by migration
+      `014`.
+- [x] Note duplication (backend contract plus editor action) into the caller's workspace.
+- [x] Dashboard search across titles and block text with archived/favourite filters, debounced
+      sidebar results and match previews.
+- [x] Recently opened timestamps on dashboard cards and in the compact sidebar.
 
 ## Editor and collaboration
 
-- [x] Stable-ID block editor with paragraphs, H1–H3, tasks, code, bullets, numbered lists, quote, callout, divider, image URL, and table/TSV blocks.
-- [x] Conflict-safe inline rich text using native Yjs text attributes: bold, italic, underline, strike, inline code, links, keyboard shortcuts, mark removal, safe URL rendering, and caret-preserving remote updates.
-- [x] External-URL image blocks; managed object/file uploads are intentionally excluded from the product.
-- [x] Slash commands, plain-text paste sanitization, heading shortcuts, emoji, 500 ms autosave, immediate manual save, and `Ctrl/Cmd+S`.
-- [x] Distraction-free focus mode (`Ctrl/Cmd+Shift+F`), persisted small-text/full-width preferences, live word and character counts, and a scroll-aware H1–H3 table of contents.
-- [x] Yjs incremental CRDT updates replace whole-document broadcasts.
-- [x] Persisted snapshots plus incremental update log, restart recovery, compaction, reconnect state-vector merge, and JSON read-model compatibility.
-- [x] Socket JWT authentication and permission validation on every collaborative update.
-- [x] Presence avatars, normalized moving pointers, block-relative selections, and immediate role/revocation enforcement.
-- [x] Session undo/redo.
+- [x] Stable-ID block editor with paragraphs, H1–H3, tasks, code, bullets, numbered lists, quote,
+      callout and divider; external-URL image blocks. The validator also accepts `table` and `file`
+      for forward compatibility, but the editor does not render them.
+- [x] Conflict-safe inline formatting through native Yjs text attributes: bold, italic, underline,
+      strike, inline code and links, with shortcuts, mark removal and safe URL rendering.
+- [x] Slash commands, sanitized paste, heading shortcuts, emoji titles, 500 ms autosave, immediate
+      manual save and `Ctrl/Cmd+S`.
+- [x] Focus mode (`Ctrl/Cmd+Shift+F`), collapsed sidebar, small-text and full-width preferences,
+      live word/character counts, and a scroll-aware table of contents.
+- [x] Yjs incremental CRDT updates replace whole-document broadcasts; the server keeps a snapshot
+      in `collaborationstates` plus an append-only `collaborationupdates` log (TTL 30 days) that is
+      compacted into `notes.content`.
+- [x] Restart recovery, reconnect state-vector merge, and JSON read-model compatibility for
+      dashboard, search, revisions and public pages.
+- [x] Socket JWT authentication, per-update permission checks, presence avatars, normalized moving
+      pointers, block-relative selections and immediate role/revocation enforcement.
+- [x] Session-local undo/redo.
 
-## History, sharing, and discovery
+## History, sharing and discovery
 
-- [x] `NoteRevision` history with automatic snapshots, named manual versions, timeline UI, protected restore, and pre-restore preservation.
-- [x] Existing-user invite autocomplete, editor/commenter/viewer role changes, instant dashboard discovery, and live access revocation.
-- [x] Secure seven-day pending invitations for unregistered emails, copyable acceptance links, registration-time acceptance, and owner revocation.
-- [x] Public access exists only after the owner explicitly creates it.
-- [x] Public URLs use 256-bit random bearer tokens; only SHA-256 hashes are stored. Links support optional bcrypt-protected passwords and expiration. Disabled, malformed, expired, and nonexistent tokens return the same generic 404.
-- [x] Authenticated users cannot bypass the public token with a note ID.
-- [x] Dedicated permission-scoped search API for title/block text plus debounced sidebar results.
-- [x] Page comments, collaborator `@email` mentions, resolve/reopen, realtime refresh, share/comment/mention notifications, and an in-app notification feed.
-- [x] Trash restore and permanent deletion.
+- [x] `NoteRevision` history with throttled automatic snapshots, named manual versions, timeline UI,
+      protected restore and pre-restore preservation (restores are themselves versioned).
+- [x] Sharing with editor/commenter/viewer roles, user search autocomplete, role changes, revocation
+      and instant dashboard discovery.
+- [x] Secure seven-day pending invitations for unregistered emails with hashed acceptance tokens,
+      copyable links, registration-time acceptance and owner revocation.
+- [x] Public access exists only after the owner publishes: 256-bit random tokens, SHA-256 hashes at
+      rest, optional bcrypt password and expiry, token rotation on republish, and identical generic
+      `404` responses for disabled/malformed/expired/unknown tokens.
+- [x] A note ID can never substitute for a public token.
+- [x] Page comments with collaborator `@email` mentions, resolve/reopen, realtime refresh via
+      `comments-sync`, and share/comment/mention notifications with an in-app feed.
 
 ## Current API contracts
 
-### Authentication — `/api/auth`
+Authoritative detail, including payloads and status codes, is in [`API.md`](./API.md).
+
+### Authentication and account — `/api/auth`
 
 - `POST /register`, `POST /login`, `GET /me`
 - `PATCH /profile`, `PATCH /password`, `GET /export`, `DELETE /account`
 
 ### Workspaces — `/api/workspaces`
 
-- `GET /`, `POST /`, `PATCH /:id`
+- `GET /` (the only workspace route)
 
 ### Notes — `/api/notes`
 
 - `GET /?archived=&workspaceId=`, `POST /`, `GET /:id`, `PUT /:id`, `DELETE /:id`
 - `PATCH /:id/archive`, `PATCH /:id/restore`, `PATCH /:id/preferences`
 - `POST /:id/duplicate`
+- `PATCH /reorder`, `PATCH /archive-many`
+- `DELETE /trash/empty`, `PATCH /trash/restore-all`, `DELETE /trash/delete-many`,
+  `PATCH /trash/restore-many`
 - `GET /:id/revisions`, `POST /:id/revisions`, `POST /:id/revisions/:revisionId/restore`
 
 ### Sharing and public reads
 
+- `GET /api/share/users/search?q=`
 - `POST /api/share/:noteId/invite`
 - `GET /api/share/:noteId/collaborators`
 - `PATCH|DELETE /api/share/:noteId/user/:userId`
 - `DELETE /api/share/:noteId/invitation/:invitationId`
 - `PATCH /api/share/:noteId/public`
-- `GET /api/public/:token`
+- `GET /api/public/:token`, `POST /api/public/:token/unlock`
 
-### Search
+### Search, comments, notifications, health
 
 - `GET /api/search?q=&workspaceId=&archived=&favorite=`
-
-### Comments and notifications
-
-- `GET|POST /api/comments/note/:noteId`
-- `PATCH /api/comments/:id/resolve`
-- `GET /api/notifications`, `PATCH /api/notifications/:id/read`
+- `GET|POST /api/comments/note/:noteId`, `PATCH /api/comments/:id/resolve`
+- `GET /api/notifications`, `PATCH /api/notifications/:id/read` (`:id` may be `all`)
+- `GET /api/health`
 
 ### Realtime protocol
 
 - Room/access: `join-note`, `leave-note`, `permission-changed`, `access-revoked`
 - CRDT: `collab-sync`, `collab-update`, `collab-error`
 - Awareness: `presence-update`, `cursor-move`, `selection-change`
-- Navigation: `note-sync`, `note-remove`, `document-saved`
+- Navigation/data: `note-sync`, `note-remove`, `note-order`, `document-saved`
+- Social: `comments-sync`, `notification`, `account-deleted`
 
-## Verification status
+## Delivery and operations
 
-- Server integration suite: passing, including auth validation, flat note ordering/archive/restore, owner/editor/viewer rules, private search concealment, tokenized public privacy, Yjs concurrent convergence, version restore, and live socket revocation.
-- Client ESLint: passing with zero errors.
-- Client production build: passing on Vite 8.
-- Responsive visual QA: passing at desktop and 390 px mobile widths in light/dark themes; browser console clean.
-- Route-level splitting: passing; the main production bundle is approximately 295 kB before gzip, with editor/settings/pages emitted as separate chunks.
-- Production dependency audit: no known production vulnerabilities at the last audit.
-- Docker/Nginx/Compose definitions: created; runtime validation remains pending because Docker is not installed in the implementation environment.
-- Existing Atlas data retained across workspace/CRDT/revision/search migrations; migration `013` added default emojis to 7 existing notes and found no remaining nested notes, while migration `014` removed legacy cover data from 9 notes and 9 revisions.
+- [x] GitHub Actions `verify` job: MongoDB service, server syntax check, server suite (API/socket
+      integration, migration runner, demo seed), server audit, client lint, unit tests, production
+      build and client audit.
+- [x] GitHub Actions `docker` job: `docker compose config --quiet`, both image builds, stack boot
+      (MongoDB + API + nginx-served client) and `/api/health` plus SPA smoke probes through nginx.
+- [x] GitHub Actions `deploy` job on `main`: optional Render and Vercel deploy hooks, followed by a
+      production `/api/health` wait loop.
+- [x] `docker-compose.yml`, `server/Dockerfile`, `client/Dockerfile` and a client `nginx.conf` that
+      serves the SPA with history fallback and proxies `/api/` and `/socket.io/` to `server:5000`.
+- [x] Root `.env.example` documenting the compose `JWT_SECRET` and `CLIENT_URLS`.
+- [x] `render.yaml` blueprint for the API (root `server`, `npm ci` / `npm start`, health
+      `/api/health`, Node 22, `MONGO_URI` and `JWT_SECRET` declared `sync: false`).
+- [x] `LICENSE` (MIT) and `CONTRIBUTING.md` (setup, test matrix, migration and PR workflow).
+- [x] Render hosts the API and Vercel the client; `https://otion-api.onrender.com/api/health`
+      reports `{"status":"ok","database":"connected"}` and `https://otion-nine.vercel.app` serves the app.
+
+## Verification status (2026-11-12, local MongoDB 8.3 + Docker 29.9)
+
+- Client ESLint: **passing, zero errors** after fixing six real violations (unused imports in
+  `ShortcutsModal` and `PublicNote`, empty catch blocks in `useCollaborativeNote`, and the
+  Fast-Refresh context split into `context/ToastContextInstance.js`).
+- Client unit tests: **5 passing** (`node --test`).
+- Client production build: **passing** on Vite 8 (~385 ms, route-level chunks).
+- Server syntax checks: **passing** for `server.js` and `scripts/seed.js`.
+- Migrations: all **13 active migrations applied** to a local authenticated MongoDB (`001`–`009`,
+  `011`–`014`) with the `_migrations` ledger at 13 entries.
+- Server integration suite: **4/4 passing** (~10.6 s) against a real MongoDB — security headers and
+  validation, note authorization/sharing/public privacy/socket revocation, unauthenticated socket
+  rejection, and profile/password/export/account deletion.
+- Demo seed: **executed twice** against the local database. Each run removed the previous 3 demo
+  accounts and 8 notes, then recreated them, proving idempotency. Verified through the API:
+  7 visible notes in personal order (0–5 plus the shared note at 7), 1 archived, 1 published,
+  3 users, 1 workspace, 3 memberships, 7 share permissions, 8 preferences, 9 revisions,
+  1 comment with a mention, 2 notifications and 1 public share.
+- Public link: seeded token returns `200` with `title`/`content`/`icon`/`updatedAt` only; an invalid
+  token returns `404`; no note ID is accepted as a token.
+- Docker: `docker compose config --quiet` passes, both images build (`server` 268 MB, `client`
+  74.8 MB), and `docker compose up -d --build` booted mongo → server → client through the compose
+  health gates. Migrations and the seed ran inside the server container; through nginx on `:8080`
+  the health probe, SPA root and deep-link fallback, login, Socket.IO polling handshake (with a
+  `websocket` upgrade advertised) and the public note all returned `200`, and the client container
+  reported `healthy`. The stack was then torn down with `docker compose down`.
+- Production smoke check: API health `200` with connected database; client root `200`.
+
+## Verification status (2026-11-13)
+
+- CI test-script fix: `node --test --test-concurrency=1 tests` failed on Node 20/22 with
+  `MODULE_NOT_FOUND` (a directory argument is not supported there) while passing on Node 26. The
+  script now relies on auto-discovery; the suite was re-run successfully on Node 20, 22 and 26.
+- Automated migration coverage: the runner applies every on-disk migration exactly once, writes a
+  unique `_migrations` ledger with timestamps, skips already-applied migrations on a second run,
+  records nothing under `--dry-run`, and exits non-zero with `MONGO_URI must be configured` when the
+  variable is absent.
+- Automated seed coverage: one run from an empty database produces the documented graph (3 accounts
+  with hashed passwords, 1 workspace, 8 notes — 1 archived, 1 published, all `contentSchemaVersion`
+  3 —, 3 memberships, 7 share permissions, 8 preferences at sort orders 0–7 with 2 favorites,
+  9 revisions, 1 comment with a mention, 2 notifications, 1 enabled public share whose printed token
+  hashes to the stored SHA-256 value). A second run reports `Removed previous demo data: 3 account(s),
+  8 note(s)` and leaves exactly one workspace and the same counts.
+- Server suite: **8/8 passing** locally (4 API/socket + 3 migration + 1 seed, ~14 s) against a real
+  MongoDB; the API file was also re-run green after the Mongoose upgrade.
+- Dependency audit: `npm audit --omit=dev` is **clean** in both packages after bumping `mongoose` to
+  `^9.12.1` (four advisories, including prototype pollution via `Schema.prototype.virtual()`).
+- `render.yaml` parses as valid YAML and matches the deployed service's build, start and health values.
 
 ## Remaining roadmap
 
-The following larger roadmap items are not represented as complete: multi-block drag/selection; automated invitation email delivery; threaded/block-targeted comment UI and email notifications; forgot-password/email-verification/active-session management; full accessibility audit; pagination/virtualization; staging/monitoring/backups; and production load/restore drills. Complete inline rich-text marks are implemented. Object uploads are intentionally outside the product scope. See `Implementation-Plan.md` for sequencing.
+Not implemented: multi-block drag/selection; automated invitation and notification email delivery;
+threaded/block-targeted comment UI; forgot-password, email verification and active-session
+management; refresh-token rotation; full accessibility audit and screen-reader pass; server-side
+pagination/virtualization; staging environment, monitoring, backups and load/restore drills; Atlas
+Search deployment configuration. See `Implementation-Plan.md` for sequencing.

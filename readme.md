@@ -1,63 +1,223 @@
 # Otion
 
-Otion is a full-stack collaborative workspace built with React, Express, MongoDB, Socket.io, and Yjs. It supports workspaces, nested rich-text block documents, conflict-safe realtime editing and formatting, presence, revision history, role-based sharing, private tokenized public links, search, favorites, and trash recovery.
+Otion is a full-stack collaborative notes workspace built with React 19, Express 5, MongoDB and
+Socket.IO. It supports a flat workspace sidebar, a block editor with markdown shortcuts and inline
+formatting, conflict-safe realtime editing with Yjs CRDTs, presence and live cursors, version
+history, role-based sharing, tokenized public links, comments with mentions, notifications, search,
+favorites, and a trash with restore.
+
+## Live deployment
+
+| Service | URL |
+| --- | --- |
+| Web app | <https://otion-nine.vercel.app> |
+| API | <https://otion-api.onrender.com/api> |
+| API health | <https://otion-api.onrender.com/api/health> |
+| Realtime | `wss://otion-api.onrender.com` |
+
+The API runs on Render (Node), the client is a static Vite build on Vercel, and data lives in MongoDB
+Atlas. CORS accepts `oton-nine`-style Vercel origins, `localhost`, and anything listed in
+`CLIENT_URLS`.
+
+### Demo accounts
+
+Running `npm run seed` in `server/` (see [Demo data](#demo-data)) creates:
+
+| Email | Password | Role |
+| --- | --- | --- |
+| `demo@otion.app` | `OtionDemo123!` | Workspace and note owner |
+| `maya@otion.app` | `OtionDemo123!` | Editor on shared notes, author of one shared note |
+| `sam@otion.app` | `OtionDemo123!` | Viewer on one note, commenter on another |
+
+The seed also publishes one note and prints its public link.
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [`docs/PRD.md`](docs/PRD.md) | Product scope, stack, data model summary, routes, rules |
+| [`docs/Architecture.md`](docs/Architecture.md) | Runtime topology, request flows, module map, deployment |
+| [`docs/Database.md`](docs/Database.md) | Every collection, field, index, cascade rule and migration |
+| [`docs/API.md`](docs/API.md) | REST endpoints, payloads, errors, rate limits, Socket.IO protocol |
+| [`docs/Phases.md`](docs/Phases.md) | Build phases and their as-built status |
+| [`docs/Rules.md`](docs/Rules.md) | Approved libraries, design tokens, conventions for contributors |
+| [`docs/Memory.md`](docs/Memory.md) | Delivered feature log and verification record |
+| [`docs/Implementation-Plan.md`](docs/Implementation-Plan.md) | Remaining roadmap and sequencing |
+
+## Repository layout
+
+```text
+otion/
+├── client/                 # React 19 + Vite 8 + Tailwind 4 single-page app
+│   ├── src/components/     # Editor, Sidebar, Navbar, modals, command palette
+│   ├── src/pages/          # Home, Login, Register, Dashboard, NoteEditor, Trash, Settings, PublicNote
+│   ├── src/context/        # Auth, Theme, Toast providers
+│   ├── src/hooks/          # useAuth, useTheme, useToast, useNotes, useCollaborativeNote, …
+│   ├── src/services/       # Axios instance and Socket.IO client
+│   ├── nginx.conf          # SPA fallback + /api and /socket.io proxying for Docker
+│   └── Dockerfile
+├── server/                 # Express 5 API + Socket.IO + Yjs persistence
+│   ├── controllers/        # auth, account, note, share, public, search, comment, notification, workspace
+│   ├── models/             # 13 Mongoose models
+│   ├── routes/             # 8 routers
+│   ├── services/           # workspace, revision and collaboration (CRDT) services
+│   ├── migrations/         # Ordered migration runner and 13 migrations
+│   ├── scripts/            # seed.js, truncateDb.js
+│   ├── tests/              # node:test + supertest integration suite
+│   └── Dockerfile
+├── docs/                   # Product, architecture, database, API and process docs
+├── docker-compose.yml      # MongoDB + API + nginx-served client
+├── render.yaml             # Render blueprint for the API service
+├── CONTRIBUTING.md         # Setup, tests, migration and PR workflow
+├── LICENSE                 # MIT
+└── .github/workflows/ci.yml
+```
 
 ## Local setup
 
-Requirements: Node.js 20+ and MongoDB/Atlas.
+Requirements: Node.js 20+ and MongoDB 6+ (local or Atlas). If the local server enables
+`security.authorization`, use an authenticated URI such as
+`mongodb://<user>:<password>@127.0.0.1:27017/otion?authSource=admin`.
 
-1. Copy `server/.env.example` to `server/.env` and set `MONGO_URI` plus a long random `JWT_SECRET`.
-2. Optionally copy/edit `client/.env.example` if the API is not at `http://localhost:5000`.
-3. Install and migrate the server:
+1. Configure the server:
 
-```powershell
+```bash
 cd server
+cp .env.example .env      # set MONGO_URI and a long random JWT_SECRET
 npm install
 npm run migrate
-npm run dev
+npm run dev               # http://localhost:5000
 ```
 
-4. In another terminal, start the client:
+2. Configure and start the client in another terminal:
 
-```powershell
+```bash
 cd client
+cp .env.example .env      # defaults to http://localhost:5000
 npm install
-npm run dev
+npm run dev               # http://localhost:5173
 ```
 
-Open `http://localhost:5173`.
+Environment variables:
+
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `PORT` | server | API port (default `5000`) |
+| `NODE_ENV` | server | `development` / `production` / `test` |
+| `MONGO_URI` | server | MongoDB connection string |
+| `JWT_SECRET` | server | JWT signing secret (required) |
+| `CLIENT_URL` | server | Single allowed origin |
+| `CLIENT_URLS` | server | Comma-separated allowed origins (takes precedence) |
+| `TEST_MONGO_URI` | server | Isolated database for the integration suite |
+| `SEED_PASSWORD` | server | Overrides the demo password used by the seed script |
+| `VITE_API_URL` | client | REST base URL |
+| `VITE_SOCKET_URL` | client | Socket.IO origin (empty = same origin) |
+
+## Demo data
+
+`server/scripts/seed.js` loads a repeatable demo workspace:
+
+```bash
+cd server
+npm run seed        # or: SEED_PASSWORD='MyDemo123!' npm run seed
+```
+
+It removes any previous data for the three demo emails, then creates the accounts, an
+`Otion Demo` workspace with guest memberships, seven notes (one archived, one published with a
+public link), per-user favorites and ordering, revisions (including a named "Kickoff" version),
+share permissions for all three roles, a comment with a mention, notifications, and a hashed public
+token. The public link is printed at the end. Run it against a development database — it only
+touches the demo accounts.
 
 ## Verification
 
-```powershell
+```bash
 cd server
-npm test
+npm test                        # integration tests (needs MongoDB; uses TEST_MONGO_URI)
+npm run check                   # node --check server.js
 npm audit --omit=dev
 
 cd ../client
 npm run lint
+npm test                        # node:test unit tests
 npm run build
 npm audit --omit=dev
 ```
 
-The integration suite uses `TEST_MONGO_URI` when configured, otherwise it creates and drops a uniquely named test database on `MONGO_URI`.
+`npm test` in `server/` uses `TEST_MONGO_URI` when configured and otherwise creates and drops a
+uniquely named database on `MONGO_URI`. `npm run seed` and `npm run truncate` are the only scripts
+that write to the configured database outside the test suite.
+
+The suite auto-discovers `server/tests/*.test.js`: the API/socket integration file, plus coverage
+for the migration runner (apply once, `--dry-run` writes nothing, missing `MONGO_URI` fails) and the
+demo seed (the documented graph, hashed public token, and a second run that purges before rebuilding).
 
 ## Docker
 
-Set a strong `JWT_SECRET`, then start the bundled MongoDB, API, and Nginx-served client:
+The compose stack runs MongoDB, the API and an nginx-served client, with health-checked startup
+ordering and `/api` + `/socket.io` proxying. Docker Compose v2+ is required (`docker compose`).
 
-```powershell
-$env:JWT_SECRET = "replace-with-a-long-random-secret"
-docker compose up --build
+```bash
+cp .env.example .env     # set JWT_SECRET (and CLIENT_URLS if needed)
+docker compose up -d --build
+docker compose exec server npm run migrate
+docker compose exec -e CLIENT_URL=http://localhost:8080 server npm run seed   # optional demo data
 ```
 
-Open `http://localhost:8080`. Docker was not available in the implementation environment, so these definitions were authored but could not be executed there.
+Open <http://localhost:8080>. `docker compose down` stops the stack and keeps the Mongo volume.
 
-## Key architecture
+The stack is verified locally: both images build, the health gates order startup mongo → server →
+client, and the health probe, SPA deep links, login, Socket.IO handshake and public notes all work
+through nginx. CI repeats the build and a smoke boot on every push (`.github/workflows/ci.yml`).
 
-- REST APIs handle authentication, workspaces, document metadata, revisions, sharing, public reads, and search.
-- Yjs incremental updates travel over authenticated Socket.io rooms and are persisted as snapshots plus a compacted update log.
-- Every HTTP and socket write revalidates the current role; revocation ejects active sessions immediately.
-- Public links contain a 256-bit random token. Only its SHA-256 hash is stored.
-- Image blocks accept external HTTPS image URLs; Otion does not store uploaded files or objects.
-- `docs/Memory.md` contains the current contracts and verification record; `docs/Implementation-Plan.md` tracks the remaining roadmap.
+## Deployment
+
+**API — Render**
+
+- [`render.yaml`](render.yaml) declares the service: root directory `server`, build `npm ci`, start
+  `npm start`, health check `/api/health`, Node 22. Apply it with Render → Blueprints → New Blueprint
+  Instance, or keep configuring the existing service by hand with the same values.
+- Environment: `NODE_ENV=production`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI`
+  (Atlas) and `JWT_SECRET`. The two secrets are `sync: false` in the blueprint, so Render prompts for
+  them and they never enter the repository.
+- Migrations are not run on boot. Run `npm run migrate` once against the production database (Render
+  shell or locally with the Atlas URI); a `preDeployCommand` would automate it but needs a paid instance.
+
+**Client — Vercel**
+
+- Root directory `client`, framework Vite, build `npm run build`, output `dist`.
+- Environment: `VITE_API_URL=https://otion-api.onrender.com/api`,
+  `VITE_SOCKET_URL=https://otion-api.onrender.com`.
+- `client/vercel.json` rewrites every path to `index.html` for client-side routing.
+
+## CI/CD
+
+`.github/workflows/ci.yml` runs on pushes to `main` and on every pull request:
+
+1. **verify** — MongoDB service, server suite (API/socket integration, migration runner and seed
+   script), server audit, client install, lint, unit tests, production build, client audit.
+2. **docker** — validates `docker-compose.yml`, builds both images, boots MongoDB + API + nginx and
+   probes `/api/health` and the SPA through the client container.
+3. **deploy** — on `main` only, triggers the Render and Vercel deploy hooks when
+   `RENDER_DEPLOY_HOOK_URL` / `VERCEL_DEPLOY_HOOK_URL` secrets exist, then checks that the
+   production API answers. When a secret is absent the corresponding step logs a skip instead of failing.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local setup, the test matrix, the migration workflow and
+the pull-request expectations. In short: add a numbered migration for schema changes, update
+`docs/API.md` for contract changes, and keep `npm test`, lint, build and the audits green.
+
+## License
+
+[MIT](LICENSE) © 2026 Ram Panjwani.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `MONGO_URI and JWT_SECRET must be configured` | Copy `server/.env.example` to `server/.env` and set both |
+| CORS error in the browser | Add the origin to `CLIENT_URLS` (comma-separated, no trailing slash) |
+| Empty sidebar after cloning | Sign in and create a note, or run `npm run seed` |
+| Socket connects then drops | The JWT expired or access was revoked; sign in again |
+| `npm test` cannot reach MongoDB | Start MongoDB locally or set `TEST_MONGO_URI` |

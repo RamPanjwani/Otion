@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Copy, Link as LinkIcon, LoaderCircle, Share2 } from 'lucide-react';
+import { Copy, Link as LinkIcon, LoaderCircle } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Editor from '../components/Editor';
 import Loading from '../components/Loading';

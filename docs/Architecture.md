@@ -1,197 +1,222 @@
-# Architecture & Application Flow — Otion Workspace
+# Architecture & Application Flow — Otion
 
-> Current implementation note (2026-11-03): collaborative content and inline formatting use incremental Yjs CRDT updates (`collab-sync`/`collab-update`) with persisted snapshots and an update log. The older `send-changes`/`receive-changes` diagrams later in this historical document are superseded. Public reads use hashed random tokens at `/api/public/:token`, never document IDs. Object uploads are intentionally unsupported; image blocks reference external HTTPS URLs. Current collections also include workspaces, workspace memberships, user note preferences, collaboration states/updates, note revisions, public shares, invitations, comments, and notifications. See `Memory.md` for the authoritative contract list.
+This document describes the deployed system, its modules and the main runtime flows. The data model
+lives in [`Database.md`](./Database.md) and every HTTP/socket contract in [`API.md`](./API.md).
 
-## 1. High-Level Architecture Overview
-
-Otion follows a decoupled client-server architecture utilizing a RESTful HTTP layer for CRUD persistence and dynamic WebSockets for low-latency real-time collaboration.
+## 1. Deployment topology
 
 ```text
-  +-----------------------------------------------------------------+
-  |                       CLIENT TIER (React 18)                     |
-  |  +-------------------+   +-----------------+   +-------------+  |
-  |  | Views & Pages     |   | Context & Hooks |   | WS Handler  |  |
-  |  | (Editor/Dashboard)|   | (AuthContext)   |   | (socket.js) |  |
-  +--+---------+---------+---+--------+--------+---+------+------+--+
-               |                      |                   |
-               | HTTP REST            | JWT Bearer        | WebSockets
-               v                      v                   v
-  +-----------------------------------------------------------------+
-  |                       SERVER TIER (Node.js/Express)             |
-  |  +-------------------+   +-----------------+   +-------------+  |
-  |  | REST API Routes   |   | Auth Middleware |   | Socket.io   |  |
-  |  | (/api/notes, etc) |   | (JWT Check)     |   | Server      |  |
-  +--+---------+---------+---+--------+--------+---+------+------+--+
-               |                      |                   |
-               +----------------------+-------------------+
-                                      | Mongoose ORM
-                                      v
-  +-----------------------------------------------------------------+
-  |                        DATABASE TIER                            |
-  |                       MongoDB Instance                          |
-  +-----------------------------------------------------------------+
+                    +----------------------------------+
+                    |   Browser (desktop / mobile)     |
+                    |   React 19 SPA, Yjs in-memory    |
+                    +----------------+-----------------+
+                                     |
+                     HTTPS / WSS     |  VITE_API_URL, VITE_SOCKET_URL
+                                     v
+   +-----------------------------+      +-------------------------------+
+   |  Vercel (static client)     |      |  Render (Node service)        |
+   |  Vite build -> dist/        |      |  Express 5 + Socket.IO 4      |
+   |  SPA rewrite -> index.html  |      |  Yjs server-side documents    |
+   +-----------------------------+      +---------------+---------------+
+                                                         | Mongoose 9
+                                                         v
+                                        +-------------------------------+
+                                        |  MongoDB Atlas                |
+                                        |  13 collections + _migrations |
+                                        +-------------------------------+
 
+   Docker (local / self-hosted): docker compose up -> mongo + api + nginx(client)
+   Docker (CI): images built and smoke-tested on every push
 ```
 
----
+| Tier | Technology | Notes |
+| --- | --- | --- |
+| Client | React 19.2, Vite 8.2, Tailwind CSS 4.3, React Router 7, Axios, Motion, Yjs 13, Socket.IO client, Zod | Route-level code splitting; production `dist/` served by Vercel or nginx |
+| API | Node.js 20+, Express 5.2, Socket.IO 4.8, JWT, bcryptjs, Helmet, express-rate-limit, pino-http, Zod | Single process hosts REST and WebSocket traffic |
+| Data | MongoDB with Mongoose 9.9 | Hashed tokens, text index, TTL log, ordered migrations |
+| Collaboration | Yjs CRDT | Updates over authenticated sockets, snapshots plus compacted update log |
+| Delivery | GitHub Actions, Render, Vercel, Docker Compose | `verify`, `docker`, `deploy` jobs |
 
-## 2. Technical Stack Specifications
+## 2. Request flows
 
-### Frontend Layer
-
-* **Framework:** React 18 (Vite build toolchain)
-* **Styling & UI Components:** Tailwind CSS, Lucide React icons
-* **HTTP Client:** Axios with centralized interceptors (`services/api.js`)
-* **Real-time Engine:** Socket.io-client (`services/socket.js`)
-* **State Management:** React Context API (`AuthContext.jsx`) and custom hooks (`useAuth.js`)
-
-### Backend Layer
-
-* **Runtime:** Node.js (v18+)
-* **Framework:** Express.js (Modular router structure)
-* **Authentication:** JSON Web Tokens (JWT) + `bcryptjs` password hashing
-* **Real-time Server:** Socket.io integrated with Node `http.createServer`
-* **Database Driver:** Mongoose ORM
-
-### Database Layer
-
-* **Storage Engine:** MongoDB (Document Store)
-* **Collections:** `users`, `notes`, `sharepermissions`
-
----
-
-## 3. Directory & File Structure
+### 2.1 Authentication
 
 ```text
-otion/
-├── client/
-│   ├── public/                 # Static public assets (icons, favicon)
-│   ├── src/
-│   │   ├── assets/             # Vector images and brand graphics
-│   │   ├── components/         # Modular UI Components
-│   │   │   ├── Editor.jsx      # Block-based WYSIWYG document canvas
-│   │   │   ├── Loading.jsx     # Global spinner / skeleton UI loader
-│   │   │   ├── Modal.jsx       # Generic modal overlay container
-│   │   │   ├── Navbar.jsx      # Document top bar with presence & actions
-│   │   │   ├── ShareModal.jsx  # Access control & link sharing dialog
-│   │   │   └── Sidebar.jsx     # Navigation sidebar & document tree
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx # Global user authentication state
-│   │   ├── hooks/
-│   │   │   └── useAuth.js      # Hook exposing auth state & login/logout actions
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx   # Main workspace overview & empty state
-│   │   │   ├── Home.jsx        # Landing page view
-│   │   │   ├── Login.jsx       # Authentication login form
-│   │   │   ├── NoteEditor.jsx  # Page wrapper for document editing view
-│   │   │   ├── Register.jsx    # User registration form
-│   │   │   └── Trash.jsx       # Soft-deleted notes view
-│   │   ├── services/
-│   │   │   ├── api.js          # Pre-configured Axios instance with JWT headers
-│   │   │   └── socket.js       # Socket.io connection instance & event emitters
-│   │   ├── utils/              # Helper utility functions
-│   │   ├── App.css             # Component-level custom styles
-│   │   ├── App.jsx             # React Router routing configuration
-│   │   ├── index.css           # Global Tailwind directives & theme tokens
-│   │   └── main.jsx            # Application entry mount point
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-└── server/
-    ├── config/
-    │   └── db.js               # MongoDB connection initializer
-    ├── controllers/
-    │   ├── authController.js   # User registration, authentication, & session
-    │   ├── noteController.js   # Document CRUD & archive lifecycle
-    │   └── shareController.js  # Permission grant/revoke logic
-    ├── middleware/
-    │   ├── authMiddleware.js   # JWT token verification middleware
-    │   └── errorMiddleware.js  # Global API exception & response handler
-    ├── models/
-    │   ├── Note.js             # Mongoose Document Schema
-    │   ├── SharePermission.js  # Mongoose Granular Permission Schema
-    │   └── User.js             # Mongoose Account Schema
-    ├── routes/
-    │   ├── authRoutes.js       # Endpoints for `/api/auth`
-    │   ├── noteRoutes.js       # Endpoints for `/api/notes`
-    │   └── shareRoutes.js      # Endpoints for `/api/share`
-    ├── utils/
-    │   └── generateToken.js    # JWT sign utility
-    ├── .env                    # Environment variables (IGNORED BY GIT)
-    ├── package.json
-    └── server.js               # Server entry point & Socket server bind
-
-```
-
----
-
-## 4. Application Workflows & Data Flows
-
-### 4.1 Authentication & Session Lifecycle
-
-```text
-[User Form] ---> (POST /api/auth/login) ---> [authController]
-                                                    |
-                                            Validate Password
-                                                    |
-[Auth Context] <--- (Return JWT + User) <-----------+
+[Login form] --POST /api/auth/login--> [authController]
+                                            | bcrypt.compare
+                                            v
+[AuthContext] <-- {user, token} ----- JWT signed with JWT_SECRET
       |
-      +---> Store token in LocalStorage
-      +---> Set dynamic Axios authorization header: `Bearer <TOKEN>`
-
+      +--> token in localStorage/sessionStorage
+      +--> axios interceptor adds Authorization: Bearer <token>
+      +--> socket.io handshake auth: { token }
 ```
 
-### 4.2 Document Creation & Retrieval Flow
+Registration creates the personal workspace and membership in the same request. A pending invitation
+token passed to `/register` is verified by hash, converted into a share permission (plus a guest
+workspace membership) and marked accepted.
+
+### 2.2 Editing and autosave
 
 ```text
-[User Action] ---> Click "New Page"
-                        |
-                        v
-                 POST /api/notes (Headers: Authorization)
-                        |
-                        v
-                 [authMiddleware] (Decodes User ID)
-                        |
-                        v
-                 [noteController] ---> Mongoose `Note.create()` ---> [MongoDB]
-                        |
-                        v
-[React State] <--- Returns Created Note Document JSON
-
+[Editor] --local edit--> Y.Doc (blocks array, Y.Text per block)
+     |
+     | doc update (origin = local, 500 ms autosave)
+     +--> socket.emit('collab-update', { noteId, update })
+     |         |
+     |         v
+     |    [collaborationService.applyUpdate]
+     |         | Y.applyUpdate
+     |         | $inc collaborationstates.lastSequence
+     |         | append collaborationupdates document
+     |         | 750 ms debounce -> compact()
+     |         v
+     |    notes.content replaced, snapshot written, old updates deleted
+     |
+     +--> PUT /api/notes/:id (title, icon, explicit save)
+               | permission check (owner/editor)
+               | recordRevision (throttled automatic, manual always)
+               | 'document-saved' + 'note-sync' broadcasts
 ```
 
-### 4.3 Real-Time Collaborative Editing Flow
+`Note.content` remains the JSON read model consumed by the dashboard, search, revisions and public
+pages; the CRDT snapshot is the write-through source for concurrent editing.
+
+### 2.3 Realtime join and permission enforcement
 
 ```text
-[Client A (User 1)]                             [Express Server]                             [Client B (User 2)]
-        |                                              |                                              |
-        |--- emit('join-note', { noteId, user }) ----->|                                              |
-        |                                              |--- emit('join-note', { noteId, user }) ----->|
-        |                                              |                                              |
-        |--- emit('send-changes', { content }) ------->|                                              |
-        |                                              |--- broadcast.to(noteId)--------------------->|
-        |                                              |    emit('receive-changes', content)          |
-        |                                              |                                              |
-        |--- emit('cursor-move', { x, y }) ----------->|                                              |
-        |                                              |--- broadcast.to(noteId)--------------------->|
-        |                                              |    emit('cursor-move', position)             |
-
+socket.connect(auth.token) -> io.use(): verify JWT, load user, join user:<id>
+socket.emit('join-note', {noteId})
+      -> roleForNote(noteId, userId)                  // owner | editor | commenter | viewer | null
+      -> null: 'access-revoked'
+      -> role: join note:<id>, add to presence map
+                emit 'permission-changed' {role}
+                emit 'collab-sync' {update, stateVector, sequence}
+                broadcast 'presence-update'
 ```
 
-### 4.4 Access Control Matrix
+Every `collab-update` re-checks the role and that the socket has joined that note; only `owner` and
+`editor` may write. Revoking access or unpublishing emits `access-revoked`, removes the socket from
+the room and updates presence. Changing a role emits `permission-changed`, so a downgraded editor's
+next update is rejected without a reconnect.
 
-| User Role | Read Document | Write Content | Archive Document | Share Access |
-| --- | --- | --- | --- | --- |
-| **Owner** | Yes | Yes | Yes | Yes |
-| **Editor** | Yes | Yes | No | No |
-| **Viewer** | Yes | No | No | No |
-| **Public User** | Yes (If Published) | No | No | No |
+### 2.4 Public read
 
----
+```text
+GET /api/public/:token
+   -> SHA-256(token) lookup in publicshares (enabled, unexpired)
+   -> bcrypt password check when a password hash exists
+   -> note read: isPublished && !isArchived
+   -> {title, content, icon, updatedAt}
+```
 
-## 5. Security Architecture & Boundary Controls
+Tokens are 256-bit `base64url` values; only hashes are stored. Republishing rotates the token.
 
-1. **Authentication Guard:** Every API request under `/api/notes` and `/api/share` passes through `authMiddleware.js`, verifying JWT authenticity and extracting `req.user`.
-2. **Resource Protection:** Controllers check note ownership (`note.user.equals(req.user._id)`) or query `SharePermission` records before returning sensitive document data.
-3. **Transport Security:** Production deployments enforce TLS/HTTPS communication for REST endpoints and WSS for WebSocket synchronization.
+## 3. Client module map
+
+```text
+client/src
+├── App.jsx                  Route table (lazy) + protected routes
+├── main.jsx                 Providers: Auth, Theme, Toast; Router
+├── components/              Editor, Sidebar, Navbar, Modal, ShareModal, SearchCommand,
+│                            CommentsModal, VersionHistoryModal, NotificationsPopover,
+│                            ShortcutsModal, PageStyleControls, NoteViewMenu, Loading, …
+├── context/                 AuthContext, ThemeContext, ToastContext (+ *Instance.js value files)
+├── hooks/                   useAuth, useTheme, useToast, useNotes, useCollaborativeNote,
+│                            useVirtualList, useDebouncedEffect, useDocumentTitle
+├── pages/                   Home, Login, Register, Dashboard, NoteEditor, Trash, Settings, PublicNote
+├── services/api.js          Axios instance, token header, INVALID_TOKEN handling
+├── services/socket.js       Socket.IO singleton
+├── utils/                   Formatting and block helpers
+└── index.css                Tailwind 4 theme tokens, shared component classes
+```
+
+State strategy: React Context for cross-cutting state (session, theme, toasts) and custom hooks for
+feature state. No Redux/Zustand by design (`Rules.md`). `*Instance.js` files hold context objects so
+component files export only components and stay Fast-Refresh compatible.
+
+## 4. Server module map
+
+```text
+server
+├── server.js                Express app, security middleware, routers, Socket.IO handlers
+├── config/db.js             Mongoose connection
+├── config/cors.js           CLIENT_URLS/CLIENT_URL allowlist + Vercel/localhost rules
+├── middleware/              authMiddleware (protect, optionalAuth), validate (Zod),
+│                            security (rate limiters), errorMiddleware (uniform envelope)
+├── routes/                  auth, note, share, workspace, public, search, comment, notification
+├── controllers/             Request handling and permission checks
+├── services/                workspaceService, revisionService, collaborationService
+├── models/                  13 Mongoose schemas
+├── validation/schemas.js    Auth, note, revision and sharing Zod schemas
+├── migrations/              runner.js + migrations 001–014 (010 retired)
+├── scripts/                 seed.js, truncateDb.js
+└── tests/                   api.integration.test.js (node:test + supertest)
+```
+
+Responsibilities are layered: routes only wire middleware and controllers; controllers own
+authorization and persistence calls; services own cross-cutting domain logic (workspace creation,
+revision numbering, CRDT lifecycle); models own schema and indexes.
+
+## 5. Access control
+
+```text
+effective role = owner        when note.user == requester
+               = share role   when a sharepermissions row exists
+               = none         otherwise (404 on concealed reads, 403 on known-resource writes)
+```
+
+| Role | Read | Realtime write | REST write | Comment | Resolve | Share/archive |
+| --- | --- | --- | --- | --- | --- | --- |
+| Owner | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Editor | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Commenter | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Viewer | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Public token holder | ✅ read-only | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+Workspace roles (`owner`, `admin`, `member`, `guest`) gate note creation and membership. `admin` and
+`member` are reserved for future collaborative workspaces; today registrations create an `owner`
+membership and sharing adds `guest` memberships.
+
+## 6. Security controls
+
+1. **Transport & headers** — HTTPS/WSS in production, Helmet, `x-powered-by` disabled, `trust proxy`
+   set on Render so rate limits see client IPs.
+2. **CORS** — explicit allowlist from `CLIENT_URLS`/`CLIENT_URL`, wildcard subdomain support, plus
+   the project's Vercel preview pattern and localhost.
+3. **Authentication** — bcrypt (cost 12) with `select: false`, JWT verification on every protected
+   route and socket handshake, generic `INVALID_TOKEN` responses.
+4. **Authorization** — role resolution on every read and write, concealed `404`s for note reads,
+   owner-only management routes, immediate eviction on revocation.
+5. **Input validation** — Zod schemas for bodies, params and queries; 1 MB JSON limit; 256 KB cap on
+   CRDT updates; 10 000-block and 100 000-char limits; regex-escaped search input.
+6. **Secrets at rest** — public-link and invitation tokens stored as SHA-256 hashes, link passwords
+   as bcrypt hashes, no object uploads (image blocks reference external HTTPS URLs).
+7. **Abuse control** — per-IP limits on all routes, auth routes and public unlock; pino-http logs
+   with authorization/cookie redaction and request IDs.
+8. **Error hygiene** — one envelope, masked 5xx messages in production, no stack traces outside
+   development.
+
+## 7. Delivery pipeline
+
+| Stage | What happens |
+| --- | --- |
+| Pull request | `verify`: server tests (API/socket, migrations, seed) + audit, client lint + unit tests + build + audit |
+| Image build | `docker`: compose config validation, both images built, stack booted, health + SPA smoke test |
+| Merge to `main` | `deploy`: optional Render/Vercel deploy hooks, production health probe |
+| Runtime | API `/api/health` reports database readiness; Render and Vercel serve the app |
+
+Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy
+cannot silently mutate production data. The API service itself is described in `render.yaml`
+(root `server`, `npm ci` / `npm start`, health `/api/health`, Node 22); `MONGO_URI` and `JWT_SECRET`
+are declared `sync: false` so their values stay in the Render dashboard. The client remains a Vercel
+static build described by `client/vercel.json`.
+
+## 8. Known limitations
+
+- JWT-only sessions: no refresh-token rotation, server-side revocation list or active-session UI.
+- Invitations are links; no transactional email delivery yet.
+- Notes are listed without pagination or virtualization on the API side.
+- No browser end-to-end suite; integration coverage is server-side plus client unit tests.
+- `table` and `file` block types are accepted by the validator but not rendered by the editor.
+- Workspace roles beyond `owner`/`guest` are reserved and have no management API.

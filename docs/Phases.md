@@ -1,101 +1,148 @@
-# Project Execution Phases — Otion Workspace
+# Build Phases — Otion Workspace
 
-This document outlines the sequential, incremental build phases for developing the **Otion Workspace**. Each phase is self-contained with clear deliverables to allow an AI coding agent or developer to build, test, and verify features step-by-step.
+The phases that produced the current product, recorded as built. Each phase lists what shipped and
+how it was verified. Schema details are in [`Database.md`](./Database.md), contracts in
+[`API.md`](./API.md), and runtime structure in [`Architecture.md`](./Architecture.md).
 
----
-
-## Phase 1: Foundation, Infrastructure & Authentication
-
-**Goal:** Establish project setup, database connections, global state, and complete user login/registration flows.
-
-### Tasks & Deliverables
-* **Backend Infrastructure:**
-  * Initialize Node/Express server in `server/server.js`.
-  * Configure MongoDB connection in `server/config/db.js`.
-  * Build `User` model (`server/models/User.js`).
-  * Implement auth controller (`authController.js`) and routes (`/api/auth/register`, `/api/auth/login`, `/api/auth/me`).
-  * Add JWT signing utility (`generateToken.js`) and protection middleware (`authMiddleware.js`).
-* **Frontend Infrastructure:**
-  * Configure Tailwind CSS tokens (`#FCF9F8` canvas background, `#1C1B1B` primary text).
-  * Build centralized Axios client (`client/src/services/api.js`).
-  * Build `AuthContext.jsx` and `useAuth.js` hook for session persistence.
-  * Construct UI views: `Login.jsx` and `Register.jsx`.
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 1 | Foundation, auth, design system | Complete |
+| 2 | Workspace shell, notes API, flat navigation | Complete |
+| 3 | Block editor and formatting | Complete |
+| 4 | Realtime collaboration (Yjs) | Complete |
+| 5 | Permissions, sharing, public links | Complete |
+| 6 | Trash, search, revisions, comments, notifications | Complete |
+| 7 | Delivery: seed, docs, CI containers, deploy hooks | Complete |
 
 ---
 
-## Phase 2: Core Workspace Architecture & Note CRUD
+## Phase 1 — Foundation, infrastructure and authentication
 
-**Goal:** Build the persistent navigation layout, page hierarchy, and REST API for document creation and retrieval.
+**Delivered**
 
-### Tasks & Deliverables
-* **Backend Note API:**
-  * Build `Note` model (`server/models/Note.js`) with fields for `title`, `content`, `icon`, `coverImage`, `parentDocument`, and `isArchived`.
-  * Build `noteController.js` and routes for `GET /api/notes`, `POST /api/notes`, `GET /api/notes/:id`, `PUT /api/notes/:id`.
-* **Frontend Navigation & Layout:**
-  * Build fixed 240px `Sidebar.jsx` drawer with navigation items (Search, Trash, New Page).
-  * Build `Dashboard.jsx` empty state with welcoming hero section and quick note creation.
-  * Implement breadcrumb navigation bar (`Navbar.jsx`).
+- `server/server.js` Express app with Helmet, CORS allowlist (`CLIENT_URLS`/`CLIENT_URL` plus the
+  project's Vercel preview pattern and localhost), JSON body limit, rate limiters, request logging
+  and the shared error middleware.
+- `server/config/db.js` Mongoose connection; `User` model with bcrypt hashing and `select: false`
+  password; `utils/generateToken.js`; `middleware/authMiddleware.js` (`protect`).
+- `authController` and `/api/auth` routes: register (with optional invitation token), login, profile,
+  password change, JSON export and account deletion.
+- Zod validation for every auth body with field-level `details`.
+- Client foundation: `services/api.js` axios instance with bearer header and `INVALID_TOKEN`
+  recovery, `AuthContext` + `useAuth`, `Login` and `Register` pages with inline validation.
+- Design system: Tailwind 4 semantic tokens (light/dark), Inter typography, Motion transitions with
+  reduced-motion support, Lucide icon normalization.
+
+**Verified by** auth integration tests, lint/build, and manual sign-in of the three seeded roles.
+
+## Phase 2 — Workspace shell, notes API and flat navigation
+
+**Delivered**
+
+- `Note` model with `title`, `icon`, `content` (schema version 3), `revisionCounter`, `user`,
+  `workspace`, `isArchived`, `isPublished`.
+- `Workspace`, `WorkspaceMembership` and `UserNotePreference` models; personal workspace created on
+  registration; memberships as `owner` plus `guest` rows for collaborators.
+- `/api/notes` CRUD, archive/restore, per-user preferences and duplicate; `PATCH /reorder` for
+  personal ordering; owner-only `PATCH /archive-many`.
+- Fixed `Sidebar` (15 rem, collapsible rail) with favorite/recent sections, `Navbar`, `Dashboard`
+  cards, `Trash` view and route-level code splitting.
+- Flat information architecture: no nesting, breadcrumbs or parent relationships; ordering is a
+  user preference.
+
+**Verified by** flat-ordering and archive/restore integration tests plus dashboard manual checks.
+
+## Phase 3 — Block editor
+
+**Delivered**
+
+- `components/Editor.jsx`: stable-ID blocks for paragraph, H1–H3, bullet, numbered, task, quote,
+  callout, divider, code and external-URL images.
+- Inline marks stored as Yjs text attributes: bold, italic, underline, strike, inline code and links,
+  with keyboard shortcuts, mark removal and safe URL rendering.
+- Slash command palette, sanitized paste, markdown-style heading shortcuts, task toggles, block
+  insertion/deletion, and a scroll-aware table of contents.
+- Autosave after 500 ms of idle typing, immediate manual save and `Ctrl/Cmd+S`, with save state shown
+  in the header; focus mode, small-text and full-width preferences.
+- Validator also accepts `table` and `file` blocks for forward compatibility; the editor does not
+  render them.
+
+**Verified by** client unit tests for block stats and manual editing passes in both themes.
+
+## Phase 4 — Realtime collaboration
+
+**Delivered**
+
+- Socket.IO server with JWT handshake authentication, `user:<id>` and `note:<id>` rooms.
+- `services/collaborationService.js`: server-side Yjs documents keyed by note, snapshot + update log
+  persistence, debounced compaction into `notes.content`, restart recovery and reconnect merges via
+  state vectors.
+- Events: `join-note`, `leave-note`, `collab-sync`, `collab-update`, `collab-error`,
+  `presence-update`, `cursor-move`, `selection-change`, `permission-changed`, `access-revoked`.
+- Per-update authorization (owner/editor only), immediate revocation, presence avatar stack, live
+  cursors and block-relative selections.
+- Session-local undo/redo and caret preservation during remote updates.
+
+**Verified by** concurrent-convergence integration tests and a two-session live revocation test.
+
+## Phase 5 — Permissions, sharing and public links
+
+**Delivered**
+
+- `SharePermission` model with unique `(noteId, userId)` and roles `editor`, `commenter`, `viewer`;
+  owner derived from `Note.user`.
+- `/api/share`: user search, invite (existing account or pending `Invitation`), collaborator listing,
+  role change, access revocation, invitation revocation and publish toggle.
+- `Invitation` with SHA-256 token hash, seven-day expiry, acceptance at registration and owner
+  revocation.
+- `PublicShare` with 256-bit token, SHA-256 hash at rest, optional bcrypt password and expiry, token
+  rotation on republish; `/api/public/:token` returns only `title`, `content`, `icon`, `updatedAt`
+  for published, non-archived notes; identical `404` for every failure mode.
+- Client `ShareModal` and `PublicNote` page with password unlock.
+
+**Verified by** private-search concealment, public-token privacy, role-change and socket-revocation
+integration tests.
+
+## Phase 6 — Trash, search, history, comments and notifications
+
+**Delivered**
+
+- Trash lifecycle: archive/restore, bulk archive, trash listing, bulk restore, bulk delete, empty
+  trash, and permanent delete cascading across permissions, preferences, CRDT state, revisions,
+  public shares, comments, notifications and invitations.
+- Revision history: throttled automatic snapshots, named manual versions, protected restore that
+  rewrites the CRDT document, and pre-restore preservation.
+- Search API (`/api/search`) over titles and block text with permission scoping, archived/favourite
+  filters, previews and a 50-result cap; debounced sidebar search UI.
+- Comments with mentions, resolve/reopen, realtime `comments-sync`; `Notification` model with feed,
+  unread state and mention/share/comment events.
+- Ordered migrations `001`–`014` (see `Database.md` §6).
+
+**Verified by** trash/revision/search integration tests and manual checks of the feed.
+
+## Phase 7 — Delivery and operations
+
+**Delivered**
+
+- `server/scripts/seed.js` + `npm run seed`: idempotent demo data for three accounts, seven notes,
+  shares, revisions, a mention comment, notifications and a published public link.
+- `docs/Database.md` and `docs/API.md`, with PRD, Architecture, Rules, Phases, Memory and the root
+  README updated to match the implementation.
+- CI: `verify` (server tests, audits, client lint/unit tests/build), `docker` (compose validation,
+  both image builds, stack boot, health and SPA probes through nginx), and `deploy` (optional Render
+  and Vercel hooks plus a production health wait).
+- Root `.env.example` for compose; documented Render/Vercel environment variables and migration step.
+
+**Verified by** a green local lint/unit/build run, syntax checks on both entry points and the seed
+script, and the CI jobs defined in `.github/workflows/ci.yml`.
 
 ---
 
-## Phase 3: Block-Based WYSIWYG Editor
+## Definition of done (applied per phase)
 
-**Goal:** Implement the interactive block document editor with formatting capabilities and media hooks.
-
-### Tasks & Deliverables
-* **Editor Component (`client/src/components/Editor.jsx`):**
-  * Build structured block-level content editing surface.
-  * Support inline rich-text formatting (bold, italic, inline code).
-  * Implement task block checkboxes and dynamic block insertion.
-  * Build slash-command (`/`) popup trigger menu for block selection.
-* **Document Customization:**
-  * Add emoji icon picker support to document headers.
-  * Add dynamic cover image URL/picker triggers.
-  * Implement debounced auto-saving to update note content via `PUT /api/notes/:id`.
-
----
-
-## Phase 4: Real-Time Collaboration & Multi-User Presence
-
-**Goal:** Integrate WebSocket communication for synchronized document state and real-time user cursor tracking.
-
-### Tasks & Deliverables
-* **Backend Socket Server:**
-  * Initialize Socket.io server within `server/server.js`.
-  * Implement WebSocket room management (`join-note`, `leave-note`).
-  * Build broadcasting events (`send-changes` -> `receive-changes`, `cursor-move`).
-* **Frontend Real-Time Integration:**
-  * Configure Socket client client (`client/src/services/socket.js`).
-  * Synchronize active editor changes between connected users without editor loops.
-  * Render live collaborator avatar stacks in `Navbar.jsx`.
-  * Render color-coded active multi-user cursors with name tags on the canvas.
-
----
-
-## Phase 5: Access Control, Granular Sharing & Public Links
-
-**Goal:** Provide secure permission management (Owner, Editor, Viewer) and public document publishing.
-
-### Tasks & Deliverables
-* **Backend Permission Engine:**
-  * Build `SharePermission` schema (`server/models/SharePermission.js`).
-  * Build `shareController.js` and routes (`/api/share/:noteId/invite`, `/collaborators`, `/public`).
-* **Frontend Sharing Dialog:**
-  * Construct elevated modal backdrop container (`Modal.jsx`).
-  * Construct `ShareModal.jsx` with email invitation form, permission role selection dropdown, and active collaborator management list.
-  * Build toggle for public read-only link generation.
-
----
-
-## Phase 6: Soft-Delete Trash System & Final Polish
-
-**Goal:** Add document recovery/purge functionality, perform UI refinement, and run end-to-end integration tests.
-
-### Tasks & Deliverables
-* **Trash Lifecycle:**
-  * Add soft-deletion endpoints (`PATCH /api/notes/:id/archive`, `PATCH /api/notes/:id/restore`, `DELETE /api/notes/:id`).
-  * Build `Trash.jsx` view to list archived pages, restore them to workspace hierarchy, or permanently delete them.
-* **UI Polish & QA:**
-  * Enforce 6px border radii (`rounded-xl`) and hairline border consistency.
-  * Add loading skeletons (`Loading.jsx`) and graceful error fallbacks.
-  * Validate build pipeline via `npm run build` in both `client` and `server`.
+- Authorization covered by the integration suite, including the 404-for-concealed-reads rule.
+- Async failures surface a user-facing toast with the API message.
+- Realtime behaviour verified across two independent sessions.
+- Lint, unit tests, production build and dependency audits pass in CI.
+- Migrations are numbered, ordered and documented; destructive ones are paired with a cleanup path.
+- Contracts and schema changes land in `API.md` / `Database.md` in the same change.

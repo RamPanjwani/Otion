@@ -127,7 +127,9 @@ export default function useCollaborativeNote(noteId, enabled, onContent) {
       if (cached) {
         Y.applyUpdate(doc, new Uint8Array(JSON.parse(cached)), LOCAL_ORIGIN);
       }
-    } catch {}
+    } catch {
+      // Ignore an unreadable offline cache and start from the server state.
+    }
 
     undoManagerRef.current = new Y.UndoManager(doc.getArray('blocks'), {
       trackedOrigins: new Set([LOCAL_ORIGIN]),
@@ -139,7 +141,9 @@ export default function useCollaborativeNote(noteId, enabled, onContent) {
       try {
         const encoded = Array.from(Y.encodeStateAsUpdate(doc));
         localStorage.setItem(`otion_offline_doc_${noteId}`, JSON.stringify(encoded));
-      } catch {}
+      } catch {
+        // Offline caching is best-effort; ignore quota or serialization failures.
+      }
 
       if (origin === LOCAL_ORIGIN && socket.connected) {
         socket.emit('collab-update', { noteId, update: Array.from(update) }, (result) => {

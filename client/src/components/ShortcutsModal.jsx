@@ -1,4 +1,3 @@
-import { Command, Keyboard } from 'lucide-react';
 import Modal from './Modal';
 
 const SHORTCUT_GROUPS = [
