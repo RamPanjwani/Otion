@@ -14,6 +14,9 @@ client/dist/
 client/build/
 dist/
 
+# Backups
+server/backups/
+
 # Playwright
 client/test-results/
 client/playwright-report/

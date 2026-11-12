@@ -25,6 +25,9 @@ lives in [`Database.md`](./Database.md) and every HTTP/socket contract in [`API.
                                         |  13 collections + _migrations |
                                         +-------------------------------+
 
+   Staging (same code, separate data):
+     Render  otion-api-staging  ->  Atlas  otion_staging   (Vercel previews of `staging`)
+
    Docker (local / self-hosted): docker compose up -> mongo + api + nginx(client)
    Docker (CI): images built and smoke-tested on every push
 ```
@@ -35,7 +38,8 @@ lives in [`Database.md`](./Database.md) and every HTTP/socket contract in [`API.
 | API | Node.js 20+, Express 5.2, Socket.IO 4.8, JWT, bcryptjs, Helmet, express-rate-limit, pino-http, Zod | Single process hosts REST and WebSocket traffic |
 | Data | MongoDB with Mongoose 9.9 | Hashed tokens, text index, TTL log, ordered migrations |
 | Collaboration | Yjs CRDT | Updates over authenticated sockets, snapshots plus compacted update log |
-| Delivery | GitHub Actions, Render, Vercel, Docker Compose | `verify`, `docker`, `deploy` jobs |
+| Delivery | GitHub Actions, Render, Vercel, Docker Compose | `verify`, `e2e`, `docker`, `deploy` jobs plus scheduled backup and uptime workflows |
+| Operations | Render health checks, GitHub Actions cron, logical backups | Health-gated restarts, 30-minute probes, daily restore drill |
 
 ## 2. Request flows
 
@@ -205,7 +209,10 @@ membership and sharing adds `guest` memberships.
 | Browser pass | `e2e`: Playwright runs the seeded stack in a real browser (sign-in, autosave, public link) |
 | Image build | `docker`: compose config validation, both images built, stack booted, health + SPA smoke test |
 | Merge to `main` | Render redeploys when the commit touches `server/`, Vercel rebuilds every push; the `deploy` job re-triggers optional hooks, probes production health and fails on pending production migrations |
-| Runtime | API `/api/health` reports database readiness; Render and Vercel serve the app |
+| Runtime | API `/api/health` reports database readiness; Render restarts on a failed health check and serves the app |
+| Backups | `backup.yml` dumps production daily, restores the archive into a scratch MongoDB, compares collection counts and keeps it for seven days |
+| Uptime | `uptime.yml` probes the API health endpoint and the web app every 30 minutes and fails loudly |
+| Staging | `otion-api-staging` runs `main` against the `otion_staging` database; Vercel previews from the `staging` branch point at it |
 
 Migrations are applied explicitly (`npm run migrate`), never automatically on boot, so a deploy
 cannot silently mutate production data. The API service itself is described in `render.yaml`
@@ -219,6 +226,9 @@ themselves, so a push deploys without any CI credential.
 - JWT-only sessions: no refresh-token rotation, server-side revocation list or active-session UI.
 - Invitations are links; no transactional email delivery yet.
 - Notes are listed without pagination or virtualization on the API side.
-- No browser end-to-end suite; integration coverage is server-side plus client unit tests.
+- Browser coverage is a five-spec Playwright smoke suite, not an exhaustive matrix of every editor or sharing path.
+- Atlas' free tier offers no point-in-time recovery; recovery relies on the daily logical backup and its seven-day artifact retention.
+- The staging API runs on the free plan, so it sleeps when idle and its first request can take a minute.
+- No load or soak testing has been run against production.
 - `table` and `file` block types are accepted by the validator but not rendered by the editor.
 - Workspace roles beyond `owner`/`guest` are reserved and have no management API.

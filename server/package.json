@@ -10,7 +10,10 @@
     "test": "node --test --test-concurrency=1",
     "migrate": "node migrations/runner.js",
     "seed": "node scripts/seed.js",
-    "truncate": "node scripts/truncateDb.js"
+    "truncate": "node scripts/truncateDb.js",
+    "backup": "node scripts/backup.js backup",
+    "restore": "node scripts/backup.js restore",
+    "verify:backup": "node scripts/backup.js verify"
   },
   "keywords": [],
   "author": "",

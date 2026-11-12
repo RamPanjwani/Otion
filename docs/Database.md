@@ -394,7 +394,9 @@ Revoking a share removes the `sharepermissions` row, evicts live sockets, and de
 ## 6. Migration ledger
 
 Run `npm run migrate` from `server/` (optionally `node migrations/runner.js --dry-run`).
-Applied migrations are recorded in `_migrations`; a migration is never re-run.
+Applied migrations are recorded in `_migrations`; a migration is never re-run. `--check` is the CI
+gate: it lists pending migrations, writes nothing, and exits non-zero when the database is behind.
+Production (Atlas, database `test`) is at 13/13 and every `main` deploy re-runs the check.
 
 | ID | Description |
 | --- | --- |
@@ -424,8 +426,31 @@ Applied migrations are recorded in `_migrations`; a migration is never re-run.
 | Clear every collection | `npm run truncate` |
 | Load demo data | `npm run seed` |
 | Integration tests (uses `TEST_MONGO_URI` or a unique temp database) | `npm test` |
+| Check whether the database is behind | `node migrations/runner.js --check` (exits 1 when pending) |
+| Back up every collection | `MONGO_URI=<uri> npm run backup -- --out backups/otion.json.gz` |
+| Restore an archive | `npm run restore -- --in backups/otion.json.gz --target <uri>` |
+| Prove an archive restores | `npm run verify:backup -- --target <scratch uri>` |
 | Connection/readiness probe | `GET /api/health` → `{ status, database }` |
 
 `npm run seed` is idempotent for its demo accounts: it deletes any existing `demo@otion.app`,
 `maya@otion.app` and `sam@otion.app` data, then recreates workspaces, notes, revisions, comments,
 a public link and a notification. Production data outside those accounts is untouched.
+
+## 8. Backups and restore drills
+
+`scripts/backup.js` writes one gzip-compressed Extended JSON document per line, each wrapped with
+its collection name, for every non-system collection. Extended JSON keeps `ObjectId`, `Date` and
+nested types intact, so the archive restores through the same script without `mongodump`:
+
+```bash
+MONGO_URI='<source>' npm run backup -- --out backups/otion.json.gz
+npm run restore -- --in backups/otion.json.gz --target '<target>'
+npm run verify:backup -- --in backups/otion.json.gz --target '<target>'
+```
+
+`restore` empties each target collection before inserting, which makes it repeatable; `verify`
+then compares per-collection counts between source and target and exits non-zero on any mismatch.
+The `backup.yml` workflow runs this cycle daily against production, restores into a throwaway
+MongoDB 7 container, and keeps the archive as an artifact for seven days. Atlas' free tier has no
+point-in-time recovery, so this is the whole recovery story — a restore older than a week is not
+possible.

@@ -1,0 +1,72 @@
+name: Backup and restore drill
+
+# Atlas on the free tier keeps no automated snapshots, so this job takes a
+# logical backup every day, proves it can be restored into a scratch database,
+# and keeps the archive for a week.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Dump production and restore it
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Back up the production database
+        working-directory: server
+        env:
+          MONGO_URI: ${{ secrets.PRODUCTION_MONGO_URI }}
+        run: |
+          if [ -z "${MONGO_URI}" ]; then
+            echo "PRODUCTION_MONGO_URI is not configured; skipping the backup."
+            exit 0
+          fi
+          npm run backup -- --out "${RUNNER_TEMP}/otion-backup.json.gz"
+
+      - name: Restore the archive and compare collection counts
+        working-directory: server
+        env:
+          MONGO_URI: ${{ secrets.PRODUCTION_MONGO_URI }}
+        run: |
+          if [ -z "${MONGO_URI}" ]; then
+            echo "PRODUCTION_MONGO_URI is not configured; skipping the restore drill."
+            exit 0
+          fi
+          npm run verify:backup -- \
+            --in "${RUNNER_TEMP}/otion-backup.json.gz" \
+            --target "mongodb://127.0.0.1:27017/otion_restore_verify"
+
+      - name: Keep the backup for a week
+        uses: actions/upload-artifact@v4
+        with:
+          name: otion-backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/otion-backup.json.gz
+          retention-days: 7

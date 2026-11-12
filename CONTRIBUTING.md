@@ -48,6 +48,21 @@ client with `VITE_API_URL=http://localhost:5000/api`. Add a spec when you change
 cannot see: sign-in, autosave, sharing, or public links. On failure, Playwright writes a trace to
 `client/test-results/`; open it with `npx playwright show-trace <trace.zip>`.
 
+## Backups and restores
+
+Backups are plain scripts, so you can rehearse a restore before touching production:
+
+```bash
+cd server
+MONGO_URI='<source uri>' npm run backup -- --out backups/otion.json.gz
+npm run restore -- --in backups/otion.json.gz --target 'mongodb://127.0.0.1:27017/otion_restore_check'
+npm run verify:backup -- --in backups/otion.json.gz --target 'mongodb://127.0.0.1:27017/otion_restore_check'
+```
+
+`restore` clears the target collections first and `verify` fails on any count mismatch. Never commit
+an archive: `server/backups/` is gitignored, and the production archive is handled by
+`.github/workflows/backup.yml` as a short-lived build artifact.
+
 ## Tests
 
 ```bash

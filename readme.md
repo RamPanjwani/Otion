@@ -14,10 +14,13 @@ favorites, and a trash with restore.
 | API | <https://otion-api.onrender.com/api> |
 | API health | <https://otion-api.onrender.com/api/health> |
 | Realtime | `wss://otion-api.onrender.com` |
+| Staging API | <https://otion-api-staging.onrender.com/api/health> |
 
 The API runs on Render (Node), the client is a static Vite build on Vercel, and data lives in MongoDB
-Atlas. CORS accepts `oton-nine`-style Vercel origins, `localhost`, and anything listed in
-`CLIENT_URLS`.
+Atlas (`test` database, which is what a URI without a database path resolves to). CORS accepts
+`otion-nine`-style Vercel origins, every `otion*.vercel.app` preview, `localhost`, and anything
+listed in `CLIENT_URLS`. Staging is the same code on Render with an `otion_staging` database on the
+same Atlas cluster, so preview work never touches production rows.
 
 ### Demo accounts
 
@@ -134,6 +137,7 @@ touches the demo accounts.
 ```bash
 cd server
 npm test                        # integration tests (needs MongoDB; uses TEST_MONGO_URI)
+npm run verify:backup -- --target mongodb://127.0.0.1:27017/otion_restore_check
 npm run check                   # node --check server.js
 npm audit --omit=dev
 
@@ -151,8 +155,9 @@ that write to the configured database outside the test suite.
 
 The suite auto-discovers `server/tests/*.test.js`: the API/socket integration file, plus coverage
 for the migration runner (apply once, `--dry-run` writes nothing, `--check` fails while migrations
-are pending, missing `MONGO_URI` fails) and the demo seed (the documented graph, hashed public token,
-and a second run that purges before rebuilding).
+are pending, missing `MONGO_URI` fails), the demo seed (the documented graph, hashed public token,
+and a second run that purges before rebuilding), and the backup script (Extended JSON round trip that
+preserves ObjectIds and dates, with `verify` comparing collection counts).
 
 `npm run test:e2e` in `client/` is a Playwright suite that drives a real browser against a real
 stack: it migrates and seeds a dedicated `otion_e2e` database, starts the API on `:5000`, builds the
@@ -190,8 +195,17 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 - Environment: `NODE_ENV=production`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI`
   (Atlas) and `JWT_SECRET`. The two secrets are `sync: false` in the blueprint, so Render prompts for
   them and they never enter the repository.
-- Migrations are not run on boot. Run `npm run migrate` once against the production database (Render
-  shell or locally with the Atlas URI); a `preDeployCommand` would automate it but needs a paid instance.
+- Migrations are not run on boot. Production is at 13/13 (`MONGO_URI=... npm run migrate -- --check`
+  exits 0); apply new ones with `npm run migrate` against the Atlas URI. The CI `deploy` job runs the
+  `--check` gate so a release with a pending migration fails instead of serving a stale schema.
+- The live service is configured exactly as the blueprint describes: `npm ci`, `npm start`, health
+  check `/api/health`, region `singapore`, free plan. A health-check failure now triggers a Render
+  restart instead of silently serving a half-broken instance.
+- **Staging** is a second free Render service, `otion-api-staging`, tracking `main` with
+  `MONGO_URI=.../otion_staging`, its own `JWT_SECRET`, and the same build/start/health settings. It
+  sleeps when idle, so its first request after a pause takes up to a minute. Vercel preview builds
+  from the `staging` branch use it through branch-scoped `VITE_API_URL` / `VITE_SOCKET_URL` values,
+  while every other preview and production keep pointing at the production API.
 
 **Client — Vercel**
 
@@ -218,6 +232,31 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
    commit — and then checks that the production API answers. When `PRODUCTION_MONGO_URI` exists it
    also runs `npm run migrate -- --check` against production, which fails the job if the deployed
    schema is behind the repository. Any absent secret makes its step log a skip instead of failing.
+
+## Operations
+
+**Uptime.** `.github/workflows/uptime.yml` probes `https://otion-api.onrender.com/api/health`
+(asserting `status: ok` and `database: connected`) and the web app every 30 minutes. A failed probe
+fails the run, which notifies the repository owner by email; the schedule also keeps the free Render
+instance from sleeping through the working day. `/api/health` returns `503` whenever the database
+disconnects, and Render restarts the service when its health check fails.
+
+**Backups.** `.github/workflows/backup.yml` runs daily at 03:17 UTC (and on demand). It dumps every
+production collection as Extended JSON, restores the archive into a scratch MongoDB service,
+compares collection counts, and keeps the archive as a build artifact for seven days. There is no
+dependency on `mongodump`:
+
+```bash
+cd server
+MONGO_URI='<atlas uri>' npm run backup -- --out backups/otion.json.gz   # archive
+npm run restore -- --in backups/otion.json.gz --target '<scratch uri>'  # replay it
+npm run verify:backup -- --target '<scratch uri>'                       # dump, restore, compare
+```
+
+`restore` clears the target collections first, so it is repeatable, and `verify` exits non-zero on
+any count mismatch — that is the restore drill. The dump preserves ObjectIds, dates and nested
+types. Atlas' free tier has no point-in-time recovery, so this daily logical backup with seven-day
+retention is the recovery story: anything older than a week is gone.
 
 ## Contributing
 

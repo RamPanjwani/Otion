@@ -146,6 +146,15 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
 - [x] `LICENSE` (MIT) and `CONTRIBUTING.md` (setup, test matrix, migration and PR workflow).
 - [x] Render hosts the API and Vercel the client; `https://otion-api.onrender.com/api/health`
       reports `{"status":"ok","database":"connected"}` and `https://otion-nine.vercel.app` serves the app.
+- [x] Live Render settings corrected through the CLI: build `npm ci`, start `npm start`, health check
+      `/api/health`, region `singapore`, plan free (`render services update`).
+- [x] Staging: Render service `otion-api-staging` on `main` with the `otion_staging` Atlas database and
+      its own JWT secret; Vercel branch-scoped preview variables keep production secrets untouched.
+- [x] Backups: `server/scripts/backup.js` (Extended JSON archives, restore, verify) plus the daily
+      `backup.yml` workflow, which restores its own archive into a scratch MongoDB before keeping it.
+- [x] Uptime: `uptime.yml` probes the production API health and the web app every 30 minutes.
+- [x] `PRODUCTION_MONGO_URI` is stored as a GitHub Actions secret so the deploy job can gate releases
+      on pending migrations.
 
 ## Verification status (2026-11-12, local MongoDB 8.3 + Docker 29.9)
 
@@ -190,8 +199,8 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   9 revisions, 1 comment with a mention, 2 notifications, 1 enabled public share whose printed token
   hashes to the stored SHA-256 value). A second run reports `Removed previous demo data: 3 account(s),
   8 note(s)` and leaves exactly one workspace and the same counts.
-- Server suite: **9/9 passing** locally (4 API/socket + 4 migration + 1 seed, ~20 s) against a real
-  MongoDB; the API file was also re-run green after the Mongoose upgrade.
+- Server suite: **10/10 passing** locally (4 API/socket + 4 migration + 1 seed + 1 backup round trip,
+  ~22 s) against a real MongoDB; the API file was also re-run green after the Mongoose upgrade.
 - Dependency audit: `npm audit --omit=dev` is **clean** in both packages after bumping `mongoose` to
   `^9.12.1` (four advisories, including prototype pollution via `Schema.prototype.virtual()`).
 - `render.yaml` parses as valid YAML; it now pins the live service's root (`server`), region
@@ -216,11 +225,22 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   `PRODUCTION_MONGO_URI` is configured, so a release fails instead of serving an outdated schema.
 - CI hygiene: `actions/checkout` and `actions/setup-node` moved to `v5`, clearing the Node 20
   deprecation annotation; the deploy job now checks out the repository so it can run the check.
+- Production schema verified against Atlas: the app database is `test` (a URI with no database path
+  resolves there), all **13 migrations** are recorded, and `npm run migrate -- --check` exits 0.
+- Restore drill against real production data: **17 collections / 34 documents** dumped from Atlas,
+  replayed into a scratch local database, and every collection count matched the source.
+- Staging verified live: `https://otion-api-staging.onrender.com/api/health` returns
+  `{"status":"ok","database":"connected"}` against `otion_staging`, which also carries all 13
+  migrations. The production service reports build `npm ci` and health check `/api/health`.
+- Monitoring and backups are code, not dashboards: `uptime.yml` (30-minute probes) and `backup.yml`
+  (daily dump plus restore comparison) run on GitHub Actions, because no error-tracking provider was
+  available to integrate and Atlas' free tier keeps no snapshots.
 
 ## Remaining roadmap
 
 Not implemented: multi-block drag/selection; automated invitation and notification email delivery;
 threaded/block-targeted comment UI; forgot-password, email verification and active-session
 management; refresh-token rotation; full accessibility audit and screen-reader pass; server-side
-pagination/virtualization; staging environment, monitoring, backups and load/restore drills; Atlas
-Search deployment configuration. See `Implementation-Plan.md` for sequencing.
+pagination/virtualization; load/soak testing; Atlas Search deployment configuration; point-in-time
+recovery (paid Atlas tier). Staging, uptime monitoring and a daily restore drill are now delivered.
+See `Implementation-Plan.md` for sequencing.
