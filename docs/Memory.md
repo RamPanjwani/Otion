@@ -234,7 +234,15 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   migrations. The production service reports build `npm ci` and health check `/api/health`.
 - Monitoring and backups are code, not dashboards: `uptime.yml` (30-minute probes) and `backup.yml`
   (daily dump plus restore comparison) run on GitHub Actions, because no error-tracking provider was
-  available to integrate and Atlas' free tier keeps no snapshots.
+  available to integrate and Atlas' free tier keeps no snapshots. Both were dispatched manually and
+  passed: uptime run `43296778996` (6 s), backup run `43296772570` (52 s, artifact uploaded).
+- Staging was exercised through its public API: registration `201`, sign-in token issued, note create
+  `201`, and the probe row appeared in `otion_staging` while production stayed untouched (the probe
+  was then deleted). Render auto-deploys staging from `main` (`bf628d5` live); Vercel previews of the
+  `staging` branch are behind deployment protection and build with the branch-scoped staging URLs.
+- CI after the operations work: run `43297308350` green on all four jobs (verify 1m5s, browser E2E
+  1m21s, container smoke 46 s, deploy 12 s with the production migration check), and the remaining
+  annotation is only GitHub's `ubuntu-latest` → Ubuntu 26 migration notice.
 
 ## Remaining roadmap
 
