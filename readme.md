@@ -196,7 +196,8 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 - Environment: `NODE_ENV=production`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI`
   (Atlas) and `JWT_SECRET`. The secrets are `sync: false` in the blueprint, so Render prompts for
   them and they never enter the repository. `SENTRY_DSN` / `SENTRY_ENVIRONMENT` are optional and
-  also `sync: false`.
+  also `sync: false`. Because `render` v2.36 has no env-var command, variables are set in the
+  dashboard or through the Render REST API (see *Operations → Error tracking*).
 - Migrations are not run on boot. Production is at 13/13 (`MONGO_URI=... npm run migrate -- --check`
   exits 0); apply new ones with `npm run migrate` against the Atlas URI. The CI `deploy` job runs the
   `--check` gate so a release with a pending migration fails instead of serving a stale schema.
@@ -249,11 +250,28 @@ unhandled rejections and uncaught exceptions are reported, with `authorization`,
 `set-cookie`, `x-api-key` and `x-csrf-token` headers stripped before sending and
 `sendDefaultPii: false`.
 
+Enable it in the Render dashboard (service → *Environment* → *Add Environment Variable*, for
+[production](https://dashboard.render.com/web/srv-dbkpfrmk1f9s73dl9ne0/env) and staging), or script it
+through the [Render REST API](https://api-docs.render.com/reference/update-env-var). The CLI cannot
+do this — `render` v2.36 has no env-var subcommand, and `render services update` rejects
+`--env-var`:
+
 ```bash
-# enable it on the API (and on otion-api-staging, with its own environment label)
-render services update srv-dbkpfrmk1f9s73dl9ne0 --env-var SENTRY_DSN='https://<key>@o<org>.ingest.sentry.io/<project>' --confirm
-render services update srv-dbkpfrmk1f9s73dl9ne0 --env-var SENTRY_ENVIRONMENT=production --confirm
+export RENDER_API_KEY='rnd_...'   # Account Settings → API Keys
+SERVICE=srv-dbkpfrmk1f9s73dl9ne0  # srv-dbr1lptg1s2s73ap9kig for staging
+
+curl -sS -X PUT "https://api.render.com/v1/services/$SERVICE/env-vars/SENTRY_DSN" \
+  -H "Authorization: Bearer $RENDER_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"value":"https://<key>@o<org>.ingest.sentry.io/<project>"}'
+
+curl -sS -X PUT "https://api.render.com/v1/services/$SERVICE/env-vars/SENTRY_ENVIRONMENT" \
+  -H "Authorization: Bearer $RENDER_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"value":"production"}'   # "staging" on the staging service
 ```
+
+Both return the stored `{key, value}`; `GET .../env-vars` lists what is set and `DELETE
+.../env-vars/<KEY>` removes one. Any change triggers a redeploy, so the DSN takes effect once that
+build finishes.
 
 `SENTRY_RELEASE` tags events with a version, and `SENTRY_TRACES_SAMPLE_RATE` (default `0`) turns on
 performance tracing. Tests stay silent even with a DSN exported, and a malformed DSN logs a warning

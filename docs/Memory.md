@@ -247,6 +247,13 @@ Authoritative detail, including payloads and status codes, is in [`API.md`](./AP
   tests cover the inert default, DSN activation, test silence, a malformed DSN and a real Express
   error delivered to a stand-in ingest endpoint. `render.yaml`, `server/.env.example` and the readme
   document the DSN; the live services do not have one yet, so nothing is reported today.
+- Render environment variables cannot be set from the CLI: `render` v2.36 rejects `--env-var` and
+  `render services update` only covers build/start/branch/plan settings. The supported paths are the
+  dashboard and the REST API — `PUT /v1/services/<id>/env-vars/<KEY>` with `{"value": "..."}` returns
+  `200` and the stored key, `DELETE` returns `204`. Both were exercised against staging with a
+  throwaway key that was then removed, leaving `JWT_SECRET`, `MONGO_URI`, `CLIENT_URLS`, `NODE_ENV`;
+  production holds `CLIENT_URL`, `JWT_SECRET`, `MONGO_URI`, `NODE_ENV`. An env-var write triggers a
+  redeploy, so the docs point at the API rather than a flag that does not exist.
 - CI after the operations work: run `43297308350` green on all four jobs (verify 1m5s, browser E2E
   1m21s, container smoke 46 s, deploy 12 s with the production migration check), and the remaining
   annotation is only GitHub's `ubuntu-latest` → Ubuntu 26 migration notice.
