@@ -52,6 +52,8 @@ The seed also publishes one note and prints its public link.
 
 | Document | Contents |
 | --- | --- |
+| [`whiteboard.md`](whiteboard.md) | **The Whiteboard Defense**: In-depth architectural rationale, threat models, "why X instead of Y", and system failure modes |
+| [`demonstration.md`](demonstration.md) | **Mini Project Evaluation Guide**: Full evaluation checklist, step-by-step live demonstration script, and examiner Q&A defense |
 | [`docs/PRD.md`](docs/PRD.md) | Product scope, stack, data model summary, routes, rules |
 | [`docs/Architecture.md`](docs/Architecture.md) | Runtime topology, request flows, module map, deployment |
 | [`docs/Database.md`](docs/Database.md) | Every collection, field, index, cascade rule and migration |
