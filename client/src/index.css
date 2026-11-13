@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-canvas: #fbfbfa;
@@ -180,6 +181,17 @@ select:focus-visible,
 }
 .dark .warning-alert svg {
   color: #fbbf24;
+}
+
+.email-verification-banner {
+  border-bottom: 1px solid #fde68a;
+  background-color: #fefce8;
+  color: #451a03;
+}
+.dark .email-verification-banner {
+  border-bottom: 1px solid rgb(180 83 9 / 0.45);
+  background-color: rgb(69 26 3 / 0.35);
+  color: #fde68a;
 }
 }
 

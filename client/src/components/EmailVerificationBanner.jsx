@@ -30,39 +30,45 @@ export default function EmailVerificationBanner() {
   };
 
   return (
-    <div className="relative z-40 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900 transition dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Mail size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="truncate">
-            Please verify your email address (<strong>{user.email}</strong>) to secure your account.
+    <aside
+      aria-label="Email verification notice"
+      className="email-verification-banner shrink-0 border-b border-amber-200/90 bg-amber-50/95 text-amber-950 transition-colors dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+    >
+      <div className="flex w-full flex-wrap sm:flex-nowrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+            <Mail size={13} />
+          </div>
+          <p className="truncate text-xs font-medium text-amber-950 dark:text-amber-200">
+            Please verify your email address (<strong className="font-semibold text-amber-950 dark:text-amber-100">{user.email}</strong>) to secure your account.
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           {sent ? (
-            <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 size={13} /> Link sent
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100/90 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" /> Link sent
             </span>
           ) : (
             <button
               type="button"
               onClick={handleResend}
               disabled={sending}
-              className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-300/80 bg-white/90 px-2.5 py-1 text-xs font-semibold text-amber-950 shadow-xs transition hover:bg-white hover:border-amber-400 active:scale-98 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/70"
             >
-              <Send size={11} /> {sending ? 'Sending…' : 'Resend verification link'}
+              <Send size={11} className="text-amber-700 dark:text-amber-400" />
+              <span>{sending ? 'Sending…' : 'Resend link'}</span>
             </button>
           )}
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="rounded p-0.5 opacity-70 hover:opacity-100"
+            className="rounded-md p-1 text-amber-900/70 transition hover:bg-amber-200/60 hover:text-amber-950 active:scale-95 dark:text-amber-400 dark:hover:bg-amber-900/50 dark:hover:text-amber-100"
             aria-label="Dismiss banner"
           >
             <X size={14} />
           </button>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

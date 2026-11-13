@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './hooks/useAuth';
 import Loading from './components/Loading';
-import EmailVerificationBanner from './components/EmailVerificationBanner';
 
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
@@ -19,14 +18,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <Loading fullPage />;
-  return user ? (
-    <>
-      <EmailVerificationBanner />
-      {children}
-    </>
-  ) : (
-    <Navigate to="/login" replace />
-  );
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
