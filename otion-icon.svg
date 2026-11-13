@@ -3,56 +3,52 @@
   <rect width="1024" height="1024" fill="#ffffff" />
 
   <!-- 
-    Otion Ultra-Minimalist Squircle App Icon (1024x1024)
-    Pure Black & White Monochromatic UI Icon
-    Aesthetic: Modern, friendly, prominent rounded corners, optical safe-zone centering
-    Zero gradients, zero strokes, zero blurs, zero intricate details
+    Otion Squircle App Icon (1024x1024)
+    Circular 'O' Monogram & Collaborative Workspace Edition
+    Pure Black & White Monochromatic UI Icon (#000000 & #ffffff)
+    Modern, friendly, ultra-minimalist geometry with perfect micro-size legibility
   -->
 
   <!-- Solid Black Squircle Container -->
   <rect x="128" y="128" width="768" height="768" rx="192" ry="192" fill="#000000" />
 
-  <!-- Document Silhouette (Pure White #ffffff) -->
+  <!-- Circular 'O' Note Monogram (Pure White #ffffff) -->
   <g fill="#ffffff">
-    <!-- Main Note Body with Angled Fold Notch -->
-    <path d="M 368 272 
-             L 576 272 
-             C 588 272 600 277 608 285 
-             L 691 368 
-             C 699 376 704 388 704 400 
-             L 704 704 
-             C 704 730.5 682.5 752 656 752 
-             L 368 752 
-             C 341.5 752 320 730.5 320 704 
-             L 320 320 
-             C 320 293.5 341.5 272 368 272 Z" />
+    <!-- Outer Circular 'O' Ring with Top-Right Fold Bevel -->
+    <path fill-rule="evenodd" d="
+      M 512 256 
+      C 653.4 256 768 370.6 768 512 
+      C 768 653.4 653.4 768 512 768 
+      C 370.6 768 256 653.4 256 512 
+      C 256 370.6 370.6 256 512 256 Z
 
-    <!-- Folded Corner Flap -->
-    <path d="M 596 272 
-             C 596 272 596 364 596 368 
-             C 596 374 602 380 608 380 
-             L 704 380 
-             C 704 380 616 292 596 272 Z" />
+      M 512 376 
+      C 437 376 376 437 376 512 
+      C 376 587 437 648 512 648 
+      C 587 648 648 587 648 512 
+      C 648 437 587 376 512 376 Z
+    " />
+
+    <!-- Top-Right Folded Corner Flap (Folded Paper Metaphor) -->
+    <path d="M 648 276 
+             C 648 344 700 396 768 396 
+             L 768 368 
+             C 712 368 668 324 668 268 
+             Z" />
+
+    <!-- Central Collaboration Focus Node (Core of the 'O' Portal) -->
+    <circle cx="512" cy="512" r="32" />
   </g>
 
-  <!-- Precision Negative Space Channels & Flow Elements (Pure Black #000000) -->
+  <!-- Precision Negative Space Channels (Pure Black #000000) -->
   <g fill="#000000">
-    <!-- Fold Separation Negative Space Incision -->
-    <path d="M 576 264 
-             L 576 392 
-             C 576 400 584 408 592 408 
-             L 712 408 
-             L 712 388 
-             L 596 388 
-             L 596 264 Z" />
-
-    <!-- Line 1: Header Note Flow Bar -->
-    <rect x="384" y="472" width="256" height="44" rx="22" />
-
-    <!-- Line 2: Note Content Flow Bar -->
-    <rect x="384" y="548" width="168" height="44" rx="22" />
-
-    <!-- Interactive Collaboration Node -->
-    <circle cx="606" cy="570" r="22" />
+    <!-- Fold Separation Channel -->
+    <path d="M 632 260 
+             L 632 412 
+             C 632 420 638 426 646 426 
+             L 780 426 
+             L 780 404 
+             L 652 404 
+             L 652 260 Z" />
   </g>
 </svg>
