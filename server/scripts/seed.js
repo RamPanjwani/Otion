@@ -4,8 +4,6 @@ const { createHash, randomBytes } = require('node:crypto');
 
 const User = require('../models/User');
 const Note = require('../models/Note');
-const Workspace = require('../models/Workspace');
-const WorkspaceMembership = require('../models/WorkspaceMembership');
 const SharePermission = require('../models/SharePermission');
 const UserNotePreference = require('../models/UserNotePreference');
 const NoteRevision = require('../models/NoteRevision');
@@ -15,7 +13,6 @@ const Notification = require('../models/Notification');
 const Invitation = require('../models/Invitation');
 const CollaborationState = require('../models/CollaborationState');
 const CollaborationUpdate = require('../models/CollaborationUpdate');
-const { ensurePersonalWorkspace } = require('../services/workspaceService');
 const { recordRevision } = require('../services/revisionService');
 
 const PASSWORD = process.env.SEED_PASSWORD || 'OtionDemo123!';
@@ -172,7 +169,6 @@ const purgeDemoData = async (emails) => {
   if (!userIds.length) return { users: 0, notes: 0 };
 
   const noteIds = await Note.find({ user: { $in: userIds } }).distinct('_id');
-  const workspaceIds = await Workspace.find({ owner: { $in: userIds } }).distinct('_id');
   const noteScope = { $in: noteIds };
   const userScope = { $in: userIds };
 
@@ -186,8 +182,6 @@ const purgeDemoData = async (emails) => {
     Comment.deleteMany({ $or: [{ note: noteScope }, { author: userScope }] }),
     Notification.deleteMany({ $or: [{ note: noteScope }, { actor: userScope }, { recipient: userScope }] }),
     Invitation.deleteMany({ $or: [{ note: noteScope }, { inviter: userScope }, { email: { $in: emails } }] }),
-    WorkspaceMembership.deleteMany({ $or: [{ workspace: { $in: workspaceIds } }, { user: userScope }] }),
-    Workspace.deleteMany({ _id: { $in: workspaceIds } }),
     Note.deleteMany({ _id: noteScope }),
   ]);
   await User.deleteMany({ _id: userScope });
@@ -212,18 +206,9 @@ const seed = async () => {
       name: account.name,
       email: account.email,
       password: PASSWORD,
+      isEmailVerified: true,
     });
   }
-
-  const workspace = await ensurePersonalWorkspace(users.owner);
-  workspace.name = 'Otion Demo';
-  workspace.icon = '◇';
-  await workspace.save();
-
-  await WorkspaceMembership.create([
-    { workspace: workspace._id, user: users.editor._id, role: 'guest', status: 'active' },
-    { workspace: workspace._id, user: users.viewer._id, role: 'guest', status: 'active' },
-  ]);
 
   const notes = {};
   for (const spec of NOTE_SPECS) {
@@ -233,7 +218,6 @@ const seed = async () => {
       content: spec.content,
       contentSchemaVersion: 3,
       user: users.owner._id,
-      workspace: workspace._id,
       isArchived: Boolean(spec.archived),
       isPublished: Boolean(spec.published),
     });
@@ -259,7 +243,6 @@ const seed = async () => {
     content: RESEARCH_CONTENT,
     contentSchemaVersion: 3,
     user: users.editor._id,
-    workspace: workspace._id,
   });
   await SharePermission.create({ noteId: research._id, userId: users.owner._id, role: 'editor' });
   await UserNotePreference.create({
@@ -301,12 +284,11 @@ const seed = async () => {
   });
 
   console.log('\nSeed complete');
-  console.log(`  Workspace: ${workspace.name} (${workspace._id})`);
   console.log(`  Notes: ${NOTE_SPECS.length} owned by demo + 1 shared by Maya (1 archived, 1 published)`);
   console.log('\n  Accounts (password for all: ' + PASSWORD + ')');
   ACCOUNTS.forEach((account) => console.log(`    ${account.email.padEnd(18)} ${account.name}`));
   console.log('\n  Roles');
-  console.log('    demo@otion.app  owner of the workspace and every seeded note');
+  console.log('    demo@otion.app  owner of seeded notes');
   console.log('    maya@otion.app  editor on three notes, author of one shared note');
   console.log('    sam@otion.app   viewer on Welcome, commenter on Design sync notes');
   console.log(`\n  Public link: ${CLIENT_URL}/public/${publicToken}`);

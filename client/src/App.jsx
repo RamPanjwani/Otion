@@ -2,10 +2,14 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './hooks/useAuth';
 import Loading from './components/Loading';
+import EmailVerificationBanner from './components/EmailVerificationBanner';
 
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const NoteEditor = lazy(() => import('./pages/NoteEditor'));
 const Trash = lazy(() => import('./pages/Trash'));
@@ -15,7 +19,14 @@ const Settings = lazy(() => import('./pages/Settings'));
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <Loading fullPage />;
-  return user ? children : <Navigate to="/login" replace />;
+  return user ? (
+    <>
+      <EmailVerificationBanner />
+      {children}
+    </>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 export default function App() {
@@ -24,6 +35,9 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/notes/:id" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />
       <Route path="/documents/:id" element={<ProtectedRoute><NoteEditor /></ProtectedRoute>} />

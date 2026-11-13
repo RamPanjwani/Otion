@@ -5,7 +5,6 @@ const commentSchema = new mongoose.Schema(
     note: { type: mongoose.Schema.Types.ObjectId, ref: 'Note', required: true, index: true },
     blockId: { type: String, default: null, maxlength: 100 },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null, index: true },
     content: { type: String, required: true, trim: true, maxlength: 5000 },
     mentions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     resolved: { type: Boolean, default: false, index: true },

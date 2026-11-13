@@ -51,27 +51,21 @@ const runSeed = async () => {
 
 const snapshot = async () => {
   const collection = (name) => connection.collection(name);
-  const [users, workspace, notes, memberships, shares, preferences, revisions, comments, notifications, publicShares, workspaces] = await Promise.all([
+  const [users, notes, shares, preferences, revisions, comments, notifications, publicShares] = await Promise.all([
     collection('users').find({}).toArray(),
-    collection('workspaces').findOne({}),
     collection('notes').find({}).toArray(),
-    collection('workspacememberships').countDocuments(),
     collection('sharepermissions').countDocuments(),
     collection('usernotepreferences').find({}).toArray(),
     collection('noterevisions').countDocuments(),
     collection('comments').find({}).toArray(),
     collection('notifications').find({}).toArray(),
     collection('publicshares').find({}).toArray(),
-    collection('workspaces').countDocuments(),
   ]);
 
   return {
     users: users.map((user) => user.email).sort(),
     passwordsAreHashed: users.every((user) => user.password !== 'OtionDemo123!' && user.password.length > 30),
-    workspace,
-    workspaceCount: workspaces,
     notes,
-    memberships,
     shares,
     preferences,
     revisions,
@@ -81,7 +75,7 @@ const snapshot = async () => {
   };
 };
 
-test('the seed script builds the documented demo workspace and is idempotent', async () => {
+test('the seed script builds the documented demo notes and is idempotent', async () => {
   const firstRun = await runSeed();
   assert.match(firstRun, /Seed complete/);
   assert.doesNotMatch(firstRun, /Removed previous demo data/, 'a clean database has nothing to purge');
@@ -90,17 +84,12 @@ test('the seed script builds the documented demo workspace and is idempotent', a
 
   assert.deepEqual(first.users, ['demo@otion.app', 'maya@otion.app', 'sam@otion.app']);
   assert.ok(first.passwordsAreHashed, 'seeded passwords should be stored as hashes');
-  assert.equal(first.workspaceCount, 1);
-  assert.equal(first.workspace.name, 'Otion Demo');
-  assert.equal(first.workspace.icon, '◇');
-  assert.equal(first.memberships, 3);
 
   assert.equal(first.notes.length, 8, 'seven owner notes plus one note owned by Maya');
   assert.equal(first.notes.filter((note) => note.isArchived).length, 1);
   assert.equal(first.notes.filter((note) => note.isPublished).length, 1);
   assert.ok(first.notes.every((note) => note.contentSchemaVersion === 3));
   assert.ok(first.notes.every((note) => note.content.length > 0));
-  assert.ok(first.notes.every((note) => note.workspace.equals(first.workspace._id)));
 
   assert.equal(first.shares, 7);
   assert.equal(first.preferences.length, 8);
@@ -131,9 +120,7 @@ test('the seed script builds the documented demo workspace and is idempotent', a
 
   const second = await snapshot();
   assert.deepEqual(second.users, first.users);
-  assert.equal(second.workspaceCount, 1, 'the purge must remove the old workspace instead of orphaning it');
   assert.equal(second.notes.length, first.notes.length);
-  assert.equal(second.memberships, first.memberships);
   assert.equal(second.shares, first.shares);
   assert.equal(second.preferences.length, first.preferences.length);
   assert.equal(second.revisions, first.revisions);

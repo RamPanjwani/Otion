@@ -10,7 +10,6 @@ const PublicShare = require('../models/PublicShare');
 const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
 const Invitation = require('../models/Invitation');
-const { ensurePersonalWorkspace, requireWorkspaceMembership } = require('../services/workspaceService');
 const { evictDocument, replaceContent } = require('../services/collaborationService');
 const { recordRevision } = require('../services/revisionService');
 
@@ -24,7 +23,6 @@ const noteSummary = (note, preference) => ({
   sortOrder: Number.isFinite(preference?.sortOrder) ? preference.sortOrder : null,
   updatedAt: note.updatedAt,
   user: note.user?._id || note.user,
-  workspace: note.workspace?._id || note.workspace,
 });
 
 const noteAudience = async (note) => {
@@ -87,7 +85,6 @@ const listNotes = asyncHandler(async (req, res) => {
     ? { user: req.user._id }
     : { $or: [{ user: req.user._id }, { _id: { $in: shared } }] };
   const notes = await Note.find({ ...ownership, isArchived: archived })
-    .where(req.validatedQuery?.workspaceId ? { workspace: req.validatedQuery.workspaceId } : {})
     .sort({ updatedAt: -1 })
     .populate('user', 'name email avatarUrl');
   const preferences = await UserNotePreference.find({ user: req.user._id, note: { $in: notes.map((note) => note._id) } });
@@ -109,18 +106,10 @@ const listNotes = asyncHandler(async (req, res) => {
 });
 
 const createNote = asyncHandler(async (req, res) => {
-  const workspace = req.body.workspace
-    || (await ensurePersonalWorkspace(req.user))._id;
-  const membership = await requireWorkspaceMembership(workspace, req.user._id, ['owner', 'admin', 'member']);
-  if (!membership) {
-    res.status(404);
-    throw new Error('Workspace not found');
-  }
   const note = await Note.create({
     title: String(req.body.title || 'Untitled note').trim() || 'Untitled note',
     icon: req.body.icon || '📝',
     user: req.user._id,
-    workspace,
     content: Array.isArray(req.body.content) ? req.body.content : [],
   });
   await UserNotePreference.updateMany(
@@ -282,17 +271,11 @@ const archiveNotes = asyncHandler(async (req, res) => {
 
 const duplicateNote = asyncHandler(async (req, res) => {
   const { note } = await requireNote(req.params.id, req.user._id, res, ['owner', 'editor', 'commenter', 'viewer'], true);
-  const membership = await requireWorkspaceMembership(note.workspace, req.user._id, ['owner', 'admin', 'member']);
-  if (!membership) {
-    res.status(403);
-    throw new Error('You cannot create notes in this workspace');
-  }
   const duplicate = await Note.create({
     title: `${note.title} copy`,
     content: note.content,
     icon: note.icon,
     user: req.user._id,
-    workspace: note.workspace,
     contentSchemaVersion: 1,
   });
   await recordRevision(duplicate, req.user._id, 'initial');

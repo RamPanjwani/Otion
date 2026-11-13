@@ -1,4 +1,4 @@
-import { ArrowRight, MailCheck, UserPlus } from 'lucide-react';
+import { AlertCircle, ArrowRight, MailCheck, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -40,7 +40,12 @@ export default function Register() {
     setSubmitting(true);
     setError('');
     try {
-      await register({ name: parsed.data.name, email: parsed.data.email, password: parsed.data.password, invitationToken: invitationToken || undefined });
+      await register({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        password: parsed.data.password,
+        invitationToken: invitationToken || undefined,
+      });
       navigate('/dashboard');
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to create account');
@@ -57,7 +62,12 @@ export default function Register() {
         <Field label="Email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} autoComplete="email" placeholder="you@company.com" />
         <Field label="Password" type="password" value={form.password} onChange={(value) => update('password', value)} error={errors.password} minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
         <Field label="Confirm password" type="password" value={form.confirmPassword} onChange={(value) => update('confirmPassword', value)} error={errors.confirmPassword} minLength={8} autoComplete="new-password" placeholder="Repeat your password" />
-        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && (
+          <div role="alert" className="error-alert">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
         <button disabled={submitting} className="primary-action mt-1 w-full px-4 py-3 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Creating…' : <>{invitationToken ? 'Accept invitation' : 'Create account'} <ArrowRight size={17} /></>}</button>
       </form>
     </AuthShell>

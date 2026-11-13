@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, Link2, LoaderCircle, Search, Trash2 } from 'lucide-react';
+import { Check, Copy, Link2, LoaderCircle, Trash2 } from 'lucide-react';
 import Modal from './Modal';
 import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function ShareModal({ open, onClose, noteId }) {
   const [state, setState] = useState({ owner: null, collaborators: [], pendingInvitations: [], isPublished: false });
@@ -15,6 +16,8 @@ export default function ShareModal({ open, onClose, noteId }) {
   const [publicPassword, setPublicPassword] = useState('');
   const [publicExpiry, setPublicExpiry] = useState('');
   const [pendingLink, setPendingLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     if (!noteId) return;
@@ -55,11 +58,28 @@ export default function ShareModal({ open, onClose, noteId }) {
     return () => { active = false; window.clearTimeout(timeout); };
   }, [email, open, state.collaborators, state.owner]);
 
+  const copyToClipboard = async (text, label = 'Link copied to clipboard') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedLink(true);
+      toast.success(label);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
   const invite = async (event) => {
     event.preventDefault();
     try {
       const { data } = await api.post(`/share/${noteId}/invite`, { email, role });
-      if (data.pending) setPendingLink(`${window.location.origin}/register?invite=${encodeURIComponent(data.invitationToken)}&email=${encodeURIComponent(data.invitation.email)}`);
+      if (data.pending) {
+        const generatedLink = `${window.location.origin}/register?invite=${encodeURIComponent(data.invitationToken)}&email=${encodeURIComponent(data.invitation.email)}`;
+        setPendingLink(generatedLink);
+        await copyToClipboard(generatedLink, 'Invitation link copied automatically!');
+      } else {
+        toast.success(`Access granted to ${email}`);
+      }
       setEmail('');
       setSuggestions([]);
       setSuggestionsOpen(false);
@@ -81,6 +101,10 @@ export default function ShareModal({ open, onClose, noteId }) {
       setState((current) => ({ ...current, isPublished: data.isPublished }));
       setPublicToken(data.token || '');
       setError('');
+      if (enabling && data.token) {
+        const url = `${window.location.origin}/public/${data.token}`;
+        await copyToClipboard(url, 'Public link created & copied to clipboard!');
+      }
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to update public access');
     }
@@ -97,6 +121,10 @@ export default function ShareModal({ open, onClose, noteId }) {
       setState((current) => ({ ...current, isPublished: true }));
       setPublicToken(data.token || '');
       setError('');
+      if (data.token) {
+        const url = `${window.location.origin}/public/${data.token}`;
+        await copyToClipboard(url, 'New public link copied to clipboard!');
+      }
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to regenerate public link');
     }
@@ -118,51 +146,180 @@ export default function ShareModal({ open, onClose, noteId }) {
       await api.patch(`/share/${noteId}/user/${userId}`, { role: nextRole });
       setState((current) => ({
         ...current,
-        collaborators: current.collaborators.map((entry) => entry.userId._id === userId ? { ...entry, role: nextRole } : entry),
+        collaborators: current.collaborators.map((item) =>
+          item.userId._id === userId ? { ...item, role: nextRole } : item,
+        ),
       }));
-      setError('');
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to change role');
+      setError(requestError.response?.data?.message || 'Role change failed');
     }
   };
 
   const shareUrl = publicToken ? `${window.location.origin}/public/${publicToken}` : '';
-  const handleEmailChange = (value) => {
-    setEmail(value);
-    if (value.trim().length < 2) {
-      setSuggestions([]);
-      setSuggestionsOpen(false);
-      setSearching(false);
-    }
-  };
-
-  const selectSuggestion = (account) => {
-    setEmail(account.email);
-    setSuggestions([]);
-    setSuggestionsOpen(false);
-  };
 
   return (
-    <Modal open={open} onClose={onClose} title="Share Note & Manage Access">
-      <div className="space-y-7 p-6">
-        <form onSubmit={invite} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px_auto]">
-          <div className="relative"><div className="field-control flex items-center px-4"><Search size={17} className="shrink-0 text-muted" /><input value={email} onChange={(event) => handleEmailChange(event.target.value)} onFocus={() => { if (suggestions.length || searching) setSuggestionsOpen(true); }} onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)} type="email" required placeholder="Add email or name…" autoComplete="off" className="min-w-0 flex-1 bg-transparent px-3 py-3 outline-none" />{searching && <LoaderCircle size={16} className="animate-spin text-muted" />}</div>{suggestionsOpen && <div className="elevated-panel absolute inset-x-0 top-[calc(100%+6px)] z-40 max-h-64 overflow-y-auto rounded-2xl p-1">{suggestions.length ? suggestions.map((account) => <button key={account._id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(account)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-panel"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-xs font-semibold text-surface">{account.name?.slice(0, 1).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-medium">{account.name}</p><p className="truncate text-xs text-muted">{account.email}</p></div></button>) : !searching && <p className="px-3 py-4 text-center text-xs text-muted">No available Otion accounts</p>}</div>}</div>
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="field-control px-3 py-3"><option value="editor">Editor</option><option value="commenter">Commenter</option><option value="viewer">Viewer</option></select>
-          <button className="primary-action px-5 py-3">Send invite</button>
+    <Modal open={open} onClose={onClose} title="Share Note">
+      <div className="space-y-6">
+        {error && <p role="alert" className="error-alert">{error}</p>}
+
+        <form onSubmit={invite} className="relative space-y-3">
+          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Invite a person</label>
+          <div className="flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                required
+                className="field-control w-full px-3.5 py-2.5 text-sm"
+              />
+              {searching && <LoaderCircle size={15} className="absolute right-3 top-3 animate-spin text-muted" />}
+            </div>
+            <select value={role} onChange={(event) => setRole(event.target.value)} className="field-control w-auto px-3 py-2.5 text-sm capitalize">
+              <option value="editor">Editor</option>
+              <option value="commenter">Commenter</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <button className="primary-action shrink-0 px-4 py-2.5 text-sm">Invite</button>
+          </div>
+
+          {suggestionsOpen && suggestions.length > 0 && (
+            <div className="elevated-panel absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl p-1">
+              {suggestions.map((user) => (
+                <button
+                  key={user._id}
+                  type="button"
+                  onClick={() => { setEmail(user.email); setSuggestionsOpen(false); }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-panel"
+                >
+                  <div className="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs font-semibold text-surface">{user.name?.slice(0, 1).toUpperCase()}</div>
+                  <div className="min-w-0 flex-1"><p className="truncate font-medium">{user.name}</p><p className="truncate text-xs text-muted">{user.email}</p></div>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
-        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-        {pendingLink && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm font-semibold text-amber-900">Account invitation created</p><p className="mt-1 text-xs text-amber-800">Email delivery is not configured. Copy this secure link and send it to the invited person; it expires in seven days.</p><div className="mt-3 flex gap-2"><input readOnly value={pendingLink} className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs" /><button type="button" onClick={() => navigator.clipboard.writeText(pendingLink)} className="rounded-xl border border-amber-200 bg-white px-3" aria-label="Copy invitation link"><Copy size={16} /></button></div></div>}
+
+        {pendingLink && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">Invite link created</p>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">Send this link to the invited person; it expires in seven days.</p>
+            <div className="mt-3 flex gap-2">
+              <input readOnly value={pendingLink} className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs dark:border-amber-900 dark:bg-panel" />
+              <button
+                type="button"
+                onClick={() => copyToClipboard(pendingLink, 'Invite link copied!')}
+                className="flex items-center gap-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-amber-100 dark:border-amber-900 dark:bg-panel"
+                aria-label="Copy invitation link"
+              >
+                {copiedLink ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                <span className="hidden sm:inline">Copy</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <section className="surface-card rounded-2xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">Public link access</h3><p className="text-sm text-muted">{state.isPublished ? 'Anyone with this link can view' : 'No public link exists'}</p></div>{state.isPublished ? <button type="button" onClick={togglePublic} className="secondary-action whitespace-nowrap px-3 py-2 text-sm hover:text-red-600 dark:hover:text-red-400">Disable link</button> : <button type="button" onClick={togglePublic} className="primary-action whitespace-nowrap px-4 py-2 text-sm">Create read-only link</button>}</div>
-          {!state.isPublished && <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs font-medium text-muted">Optional password<input type="password" value={publicPassword} onChange={(event) => setPublicPassword(event.target.value)} minLength={8} maxLength={128} placeholder="At least 8 characters" className="field-control mt-1 px-3 py-2 text-sm" /></label><label className="text-xs font-medium text-muted">Optional expiration<input type="datetime-local" value={publicExpiry} onChange={(event) => setPublicExpiry(event.target.value)} min={new Date().toISOString().slice(0, 16)} className="field-control mt-1 px-3 py-2 text-sm" /></label></div>}
-          {state.isPublished && (publicToken ? <div className="mt-4 flex gap-2"><div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-sm text-muted"><Link2 size={16} /><span className="truncate">{shareUrl}</span></div><button onClick={() => navigator.clipboard.writeText(shareUrl)} className="rounded-xl border border-line bg-white px-3" aria-label="Copy public link"><Copy size={17} /></button></div> : <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3"><p className="text-xs text-muted">For security, the secret link is shown only when it is created. Generate a new link to copy it.</p><button type="button" onClick={regeneratePublic} className="shrink-0 rounded-xl border border-line px-3 py-2 text-xs font-semibold hover:bg-panel">Generate new link</button></div>)}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Public link access</h3>
+              <p className="text-sm text-muted">{state.isPublished ? 'Anyone with this link can view' : 'No public link exists'}</p>
+            </div>
+            {state.isPublished ? (
+              <button type="button" onClick={togglePublic} className="secondary-action whitespace-nowrap px-3 py-2 text-sm hover:text-red-600 dark:hover:text-red-400">
+                Disable link
+              </button>
+            ) : (
+              <button type="button" onClick={togglePublic} className="primary-action whitespace-nowrap px-4 py-2 text-sm">
+                Create & Copy link
+              </button>
+            )}
+          </div>
+          {!state.isPublished && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-medium text-muted">
+                Optional password
+                <input
+                  type="password"
+                  value={publicPassword}
+                  onChange={(event) => setPublicPassword(event.target.value)}
+                  minLength={8}
+                  maxLength={128}
+                  placeholder="At least 8 characters"
+                  className="field-control mt-1 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="text-xs font-medium text-muted">
+                Optional expiration
+                <input
+                  type="datetime-local"
+                  value={publicExpiry}
+                  onChange={(event) => setPublicExpiry(event.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="field-control mt-1 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+          )}
+          {state.isPublished && (
+            publicToken ? (
+              <div className="mt-4 flex gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-sm text-muted dark:bg-panel">
+                  <Link2 size={16} />
+                  <span className="truncate">{shareUrl}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(shareUrl, 'Public link copied!')}
+                  className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-semibold hover:bg-panel dark:bg-panel"
+                  aria-label="Copy public link"
+                >
+                  <Copy size={16} />
+                  <span>Copy</span>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3 dark:bg-panel">
+                <p className="text-xs text-muted">For security, the secret link is shown only when created.</p>
+                <button type="button" onClick={regeneratePublic} className="shrink-0 rounded-xl border border-line px-3 py-2 text-xs font-semibold hover:bg-panel">
+                  Generate new link
+                </button>
+              </div>
+            )
+          )}
         </section>
 
-        <section><p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted">People with access</p>
+        <section>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted">People with access</p>
           {state.owner && <Person person={state.owner} role="Owner" />}
-          {state.collaborators.map((entry) => <Person key={entry._id} person={entry.userId} role={entry.role} onRoleChange={(nextRole) => changeRole(entry.userId._id, nextRole)} onRemove={() => revoke(entry.userId._id)} />)}
-          {state.pendingInvitations?.map((invitation) => <div key={invitation._id} className="flex items-center gap-3 py-3"><div className="grid h-10 w-10 place-items-center rounded-full border border-dashed border-line text-xs text-muted">?</div><div className="min-w-0 flex-1"><p className="truncate font-medium">{invitation.email}</p><p className="text-xs text-muted">Pending until {new Date(invitation.expiresAt).toLocaleString()}</p></div><span className="text-sm capitalize text-muted">{invitation.role}</span><button type="button" onClick={() => revokePending(invitation._id)} className="rounded-xl p-2 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400" aria-label={`Revoke invitation for ${invitation.email}`}><Trash2 size={17} /></button></div>)}
+          {state.collaborators.map((entry) => (
+            <Person
+              key={entry._id}
+              person={entry.userId}
+              role={entry.role}
+              onRoleChange={(nextRole) => changeRole(entry.userId._id, nextRole)}
+              onRemove={() => revoke(entry.userId._id)}
+            />
+          ))}
+          {state.pendingInvitations?.map((invitation) => (
+            <div key={invitation._id} className="flex items-center gap-3 py-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full border border-dashed border-line text-xs text-muted">?</div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{invitation.email}</p>
+                <p className="text-xs text-muted">Pending until {new Date(invitation.expiresAt).toLocaleString()}</p>
+              </div>
+              <span className="text-sm capitalize text-muted">{invitation.role}</span>
+              <button
+                type="button"
+                onClick={() => revokePending(invitation._id)}
+                className="rounded-xl p-2 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                aria-label={`Revoke invitation for ${invitation.email}`}
+              >
+                <Trash2 size={17} />
+              </button>
+            </div>
+          ))}
         </section>
       </div>
     </Modal>
@@ -170,5 +327,33 @@ export default function ShareModal({ open, onClose, noteId }) {
 }
 
 function Person({ person, role, onRoleChange, onRemove }) {
-  return <div className="flex items-center gap-3 py-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-ink text-sm font-semibold text-surface">{person.name?.slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="truncate font-medium">{person.name}</p><p className="truncate text-sm text-muted">{person.email}</p></div>{onRoleChange ? <select value={role} onChange={(event) => onRoleChange(event.target.value)} className="field-control w-auto px-2 py-1.5 text-sm capitalize"><option value="editor">Editor</option><option value="commenter">Commenter</option><option value="viewer">Viewer</option></select> : <span className="capitalize text-sm text-muted">{role}</span>}{onRemove && <button onClick={onRemove} className="icon-action h-9 w-9 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400" aria-label={`Revoke ${person.name}`}><Trash2 size={17} /></button>}</div>;
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="grid h-10 w-10 place-items-center rounded-full bg-ink text-sm font-semibold text-surface">
+        {person.name?.slice(0, 1).toUpperCase()}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{person.name}</p>
+        <p className="truncate text-sm text-muted">{person.email}</p>
+      </div>
+      {onRoleChange ? (
+        <select value={role} onChange={(event) => onRoleChange(event.target.value)} className="field-control w-auto px-2 py-1.5 text-sm capitalize">
+          <option value="editor">Editor</option>
+          <option value="commenter">Commenter</option>
+          <option value="viewer">Viewer</option>
+        </select>
+      ) : (
+        <span className="capitalize text-sm text-muted">{role}</span>
+      )}
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="icon-action h-9 w-9 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          aria-label={`Revoke ${person.name}`}
+        >
+          <Trash2 size={17} />
+        </button>
+      )}
+    </div>
+  );
 }

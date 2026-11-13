@@ -71,17 +71,13 @@ test('note authorization, sharing, public privacy, and socket revocation work en
   const owner = await register('Owner', 'owner@example.com');
   const collaborator = await register('Collaborator', 'collaborator@example.com');
 
-  const ownerWorkspaces = await authenticated('get', '/api/workspaces', owner.token).expect(200);
-  assert.equal(ownerWorkspaces.body.length, 1);
-  assert.equal(ownerWorkspaces.body[0].membershipRole, 'owner');
-
   const created = await authenticated('post', '/api/notes', owner.token)
     .send({ title: 'Private roadmap' })
     .expect(201);
   const noteId = created.body._id;
 
   const child = await authenticated('post', '/api/notes', owner.token)
-    .send({ title: 'Second note', workspace: ownerWorkspaces.body[0]._id })
+    .send({ title: 'Second note' })
     .expect(201);
   await authenticated('patch', '/api/notes/reorder', owner.token)
     .send({ noteIds: [child.body._id, noteId] })
@@ -125,9 +121,6 @@ test('note authorization, sharing, public privacy, and socket revocation work en
   }).expect(201);
   const invitedPage = await authenticated('get', `/api/notes/${noteId}`, invitedRegistration.body.token).expect(200);
   assert.equal(invitedPage.body.accessRole, 'commenter');
-
-  const collaboratorWorkspaces = await authenticated('get', '/api/workspaces', collaborator.token).expect(200);
-  assert.ok(collaboratorWorkspaces.body.some((workspace) => workspace._id === ownerWorkspaces.body[0]._id && workspace.membershipRole === 'guest'));
 
   const shared = await authenticated('get', `/api/notes/${noteId}`, collaborator.token).expect(200);
   assert.equal(shared.body.accessRole, 'editor');
@@ -285,15 +278,117 @@ test('profile, password, export, and account deletion flows are protected', asyn
   await authenticated('patch', '/api/auth/password', account.token)
     .send({ currentPassword: 'password-123', newPassword: 'new-password-123' })
     .expect(200);
-  await request(server).post('/api/auth/login').send({ email: account.email, password: 'password-123' }).expect(401);
-  await request(server).post('/api/auth/login').send({ email: account.email, password: 'new-password-123' }).expect(200);
+  // Old token should be revoked after password change
+  await authenticated('get', '/api/auth/me', account.token).expect(401);
+
+  const loginRes = await request(server).post('/api/auth/login').send({ email: account.email, password: 'password-123' }).expect(401);
+  const reauth = await request(server).post('/api/auth/login').send({ email: account.email, password: 'new-password-123' }).expect(200);
+  account.token = reauth.body.token;
+
+  // Test logout token revocation
+  const logoutUser = await register('Logout User', 'logout@example.com');
+  await authenticated('get', '/api/auth/me', logoutUser.token).expect(200);
+  await authenticated('post', '/api/auth/logout', logoutUser.token).expect(200);
+  await authenticated('get', '/api/auth/me', logoutUser.token).expect(401);
 
   const exported = await authenticated('get', '/api/auth/export', account.token).expect(200);
   assert.equal(exported.body.profile.email, account.email);
-  assert.equal(exported.body.workspaces.length, 1);
+  assert.ok(Array.isArray(exported.body.notes));
 
   await authenticated('delete', '/api/auth/account', account.token)
     .send({ password: 'new-password-123' })
     .expect(200);
   await authenticated('get', '/api/auth/me', account.token).expect(401);
+});
+
+test('forgot password and reset password flow works end to end', async () => {
+  const user = await register('Reset Test User', 'resetuser@example.com');
+
+  // Request password reset
+  const forgotRes = await request(server)
+    .post('/api/auth/forgot-password')
+    .send({ email: 'resetuser@example.com' })
+    .expect(200);
+  assert.ok(forgotRes.body.message.includes('password reset link has been sent'));
+  assert.ok(forgotRes.body.resetToken);
+
+  // Attempt reset with invalid token
+  await request(server)
+    .post('/api/auth/reset-password')
+    .send({ token: 'invalid-token-123456789', password: 'brand-new-password-123' })
+    .expect(400);
+
+  // Reset with valid token
+  const resetRes = await request(server)
+    .post('/api/auth/reset-password')
+    .send({ token: forgotRes.body.resetToken, password: 'brand-new-password-123' })
+    .expect(200);
+  assert.ok(resetRes.body.message.includes('Password has been reset successfully'));
+
+  // Old password must fail
+  await request(server)
+    .post('/api/auth/login')
+    .send({ email: 'resetuser@example.com', password: 'password-123' })
+    .expect(401);
+
+  // Old JWT token must be revoked
+  await authenticated('get', '/api/auth/me', user.token).expect(401);
+
+  // New password must succeed
+  const loginRes = await request(server)
+    .post('/api/auth/login')
+    .send({ email: 'resetuser@example.com', password: 'brand-new-password-123' })
+    .expect(200);
+  assert.ok(loginRes.body.token);
+});
+
+test('graceful email verification allows immediate sign-in with unverified status until verified', async () => {
+  // Register an account
+  const regRes = await request(server)
+    .post('/api/auth/register')
+    .send({
+      name: 'Graceful User',
+      email: 'graceful@example.com',
+      password: 'password-123',
+    })
+    .expect(201);
+
+  assert.ok(regRes.body.token);
+  assert.equal(regRes.body.isEmailVerified, false);
+
+  // Graceful mode: unverified user can log in without being blocked
+  const loginRes = await request(server)
+    .post('/api/auth/login')
+    .send({ email: 'graceful@example.com', password: 'password-123' })
+    .expect(200);
+  assert.ok(loginRes.body.token);
+  assert.equal(loginRes.body.isEmailVerified, false);
+
+  // Request fresh verification link
+  const resendRes = await request(server)
+    .post('/api/auth/resend-verification')
+    .send({ email: 'graceful@example.com' })
+    .expect(200);
+  assert.ok(resendRes.body.verifyToken);
+
+  // Verify with invalid token
+  await request(server)
+    .post('/api/auth/verify-email')
+    .send({ token: 'invalid-token-123456789' })
+    .expect(400);
+
+  // Verify with valid token from resend
+  const verifyRes = await request(server)
+    .post('/api/auth/verify-email')
+    .send({ token: resendRes.body.verifyToken })
+    .expect(200);
+  assert.equal(verifyRes.body.isEmailVerified, true);
+  assert.ok(verifyRes.body.token);
+
+  // Now logging in returns verified status
+  const verifiedLogin = await request(server)
+    .post('/api/auth/login')
+    .send({ email: 'graceful@example.com', password: 'password-123' })
+    .expect(200);
+  assert.equal(verifiedLogin.body.isEmailVerified, true);
 });

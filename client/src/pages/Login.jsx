@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowRight, Eye, EyeOff, LogIn, Moon, Sun } from 'lucide-react';
+import { AlertCircle, ArrowRight, Eye, EyeOff, LogIn, Moon, Sun } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -53,7 +53,27 @@ export default function Login() {
       <form onSubmit={submit} className="auth-form flex flex-col gap-3" noValidate>
         <Field label="Email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} autoComplete="email" placeholder="you@company.com" />
         <Field label="Password" type="password" value={form.password} onChange={(value) => update('password', value)} error={errors.password} autoComplete="current-password" placeholder="Your password" />
-        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        <div className="flex justify-end -mt-1">
+          <Link to="/forgot-password" className="text-xs font-medium text-muted transition hover:text-accent">
+            Forgot password?
+          </Link>
+        </div>
+        {error && (
+          <div role="alert" className="error-alert">
+            <AlertCircle size={16} />
+            <div className="flex-1">
+              <p>{error}</p>
+              {error.toLowerCase().includes('verify') && (
+                <p className="mt-1 text-xs">
+                  Didn't get the email?{' '}
+                  <Link to="/verify-email" className="font-semibold underline hover:opacity-80">
+                    Resend verification link
+                  </Link>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
         <button disabled={submitting} className="primary-action mt-1 w-full px-4 py-3 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Signing in…' : <>Sign in <ArrowRight size={17} /></>}</button>
       </form>
     </AuthShell>

@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
       name: payload.name,
       email: payload.email,
       avatarUrl: payload.avatarUrl,
+      isEmailVerified: Boolean(payload.isEmailVerified),
     });
   }, []);
 
@@ -31,7 +32,9 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (details) => {
     const { data } = await api.post('/auth/register', details);
-    persistSession(data, true);
+    if (data.token) {
+      persistSession(data, true);
+    }
     return data;
   }, [persistSession]);
 

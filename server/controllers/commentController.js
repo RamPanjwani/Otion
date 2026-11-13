@@ -17,13 +17,6 @@ const listComments = asyncHandler(async (req, res) => {
 
 const createComment = asyncHandler(async (req, res) => {
   const { note } = await requireNote(req.params.noteId, req.user._id, res, ['owner', 'editor', 'commenter', 'viewer'], true);
-  if (req.body.parentComment) {
-    const parent = await Comment.exists({ _id: req.body.parentComment, note: note._id });
-    if (!parent) {
-      res.status(400);
-      throw new Error('Parent comment not found');
-    }
-  }
   const emails = [...new Set([...req.body.content.matchAll(/@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g)].map((match) => match[1].toLowerCase()))];
   const mentionedUsers = emails.length ? await User.find({ email: { $in: emails } }).select('_id') : [];
   const sharedUsers = await SharePermission.find({ noteId: note._id }).distinct('userId');
@@ -33,7 +26,6 @@ const createComment = asyncHandler(async (req, res) => {
     note: note._id,
     blockId: req.body.blockId || null,
     author: req.user._id,
-    parentComment: req.body.parentComment || null,
     content: req.body.content,
     mentions,
   });

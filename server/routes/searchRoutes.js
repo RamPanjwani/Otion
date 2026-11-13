@@ -8,7 +8,6 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i);
 const router = express.Router();
 router.get('/', protect, validate({ query: z.object({
   q: z.string().trim().min(1).max(200),
-  workspaceId: objectId.optional(),
   archived: z.enum(['true', 'false']).optional(),
   favorite: z.enum(['true', 'false']).optional(),
 }) }), searchNotes);

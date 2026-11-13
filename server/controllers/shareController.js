@@ -2,12 +2,12 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Note = require('../models/Note');
 const SharePermission = require('../models/SharePermission');
-const WorkspaceMembership = require('../models/WorkspaceMembership');
 const PublicShare = require('../models/PublicShare');
 const { createHash, randomBytes } = require('node:crypto');
 const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const Invitation = require('../models/Invitation');
+const { sendInvitationEmail, sendCollaboratorEmail } = require('../services/emailService');
 
 const ownerNote = async (noteId, userId, res) => {
   const note = await Note.findOne({ _id: noteId, user: userId });
@@ -38,13 +38,13 @@ const invite = asyncHandler(async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const role = ['editor', 'commenter'].includes(req.body.role) ? req.body.role : 'viewer';
   const user = await User.findOne({ email });
+  const clientBase = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
   if (!user) {
     const invitationToken = randomBytes(32).toString('base64url');
     const tokenHash = createHash('sha256').update(invitationToken).digest('hex');
     const invitation = await Invitation.findOneAndUpdate(
       { note: note._id, email, status: 'pending' },
       {
-        workspace: note.workspace,
         inviter: req.user._id,
         role,
         tokenHash,
@@ -52,6 +52,15 @@ const invite = asyncHandler(async (req, res) => {
       },
       { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
     );
+    const inviteUrl = `${clientBase}/register?invite=${encodeURIComponent(invitationToken)}&email=${encodeURIComponent(email)}`;
+    sendInvitationEmail({
+      to: email,
+      inviterName: req.user.name,
+      noteTitle: note.title,
+      inviteUrl,
+      role,
+    }).catch(() => undefined);
+
     return res.status(202).json({
       pending: true,
       invitation: { _id: invitation._id, email: invitation.email, role: invitation.role, expiresAt: invitation.expiresAt },
@@ -67,13 +76,17 @@ const invite = asyncHandler(async (req, res) => {
     { role },
     { upsert: true, returnDocument: 'after', runValidators: true },
   ).populate('userId', 'name email avatarUrl');
-  if (note.workspace) {
-    await WorkspaceMembership.findOneAndUpdate(
-      { workspace: note.workspace, user: user._id },
-      { $setOnInsert: { role: 'guest', status: 'active', joinedAt: new Date() } },
-      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
-    );
-  }
+
+  const noteUrl = `${clientBase}/notes/${note._id}`;
+  sendCollaboratorEmail({
+    to: email,
+    inviterName: req.user.name,
+    noteTitle: note.title,
+    noteUrl,
+    role,
+    isUpdate: false,
+  }).catch(() => undefined);
+
   req.app.get('io')?.notifyUserRole(req.params.noteId, user._id, role);
   req.app.get('io')?.to(`user:${user._id}`).emit('note-sync', {
     note: {
@@ -85,7 +98,6 @@ const invite = asyncHandler(async (req, res) => {
       isFavorite: false,
       updatedAt: note.updatedAt,
       user: note.user,
-      workspace: note.workspace,
     },
   });
   const notification = await Notification.create({ recipient: user._id, type: 'share', actor: req.user._id, note: note._id });
@@ -94,7 +106,7 @@ const invite = asyncHandler(async (req, res) => {
 });
 
 const updateRole = asyncHandler(async (req, res) => {
-  await ownerNote(req.params.noteId, req.user._id, res);
+  const note = await ownerNote(req.params.noteId, req.user._id, res);
   const role = req.body.role;
   if (!['editor', 'commenter', 'viewer'].includes(role)) {
     res.status(400);
@@ -110,6 +122,20 @@ const updateRole = asyncHandler(async (req, res) => {
     throw new Error('Collaborator not found');
   }
   req.app.get('io')?.notifyUserRole(req.params.noteId, req.params.userId, role);
+
+  if (permission.userId?.email) {
+    const clientBase = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
+    const noteUrl = `${clientBase}/notes/${note._id}`;
+    sendCollaboratorEmail({
+      to: permission.userId.email,
+      inviterName: req.user.name,
+      noteTitle: note.title,
+      noteUrl,
+      role,
+      isUpdate: true,
+    }).catch(() => undefined);
+  }
+
   res.json(permission);
 });
 
@@ -141,22 +167,8 @@ const revokeInvitation = asyncHandler(async (req, res) => {
 });
 
 const revoke = asyncHandler(async (req, res) => {
-  const note = await ownerNote(req.params.noteId, req.user._id, res);
+  await ownerNote(req.params.noteId, req.user._id, res);
   await SharePermission.deleteOne({ noteId: req.params.noteId, userId: req.params.userId });
-  if (note.workspace) {
-    const workspaceNoteIds = await Note.find({ workspace: note.workspace }).distinct('_id');
-    const remainingAccess = await SharePermission.exists({
-      userId: req.params.userId,
-      noteId: { $in: workspaceNoteIds },
-    });
-    if (!remainingAccess) {
-      await WorkspaceMembership.deleteOne({
-        workspace: note.workspace,
-        user: req.params.userId,
-        role: 'guest',
-      });
-    }
-  }
   req.app.get('io')?.to(`user:${req.params.userId}`).emit('note-remove', { noteId: req.params.noteId });
   req.app.get('io')?.evictUserFromNote(req.params.noteId, req.params.userId);
   res.json({ message: 'Access revoked' });

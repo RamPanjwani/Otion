@@ -81,7 +81,7 @@ export default function Settings() {
       <PageTransition as="main" className="mx-auto max-w-3xl space-y-5 px-6 py-12 sm:px-10 sm:py-16">
         <div className="mb-9"><h1 className="text-4xl font-bold tracking-[-0.04em]">Settings</h1><p className="mt-3 text-muted">Manage your profile, security, and Otion data.</p></div>
         {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
-        {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="error-alert">{error}</p>}
 
         <SettingsCard icon={<UserRound size={18} />} title="Profile" description="How you appear to collaborators across Otion.">
           <form onSubmit={saveProfile}>

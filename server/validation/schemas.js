@@ -31,6 +31,7 @@ const auth = {
     email,
     password: z.string().min(8).max(128),
     invitationToken: z.string().min(40).max(200).optional(),
+    requireVerification: z.boolean().optional(),
   }),
   login: z.object({ email, password: z.string().min(1).max(128) }),
   profile: z.object({
@@ -42,16 +43,24 @@ const auth = {
     newPassword: z.string().min(8).max(128),
   }),
   deleteAccount: z.object({ password: z.string().min(1).max(128) }),
+  forgotPassword: z.object({ email }),
+  resetPassword: z.object({
+    token: z.string().min(10).max(256),
+    password: z.string().min(8).max(128),
+  }),
+  verifyEmail: z.object({
+    token: z.string().min(10).max(256),
+  }),
+  resendVerification: z.object({ email }),
 };
 
 const notes = {
-  list: z.object({ archived: z.enum(['true', 'false']).optional(), workspaceId: objectId.optional() }),
+  list: z.object({ archived: z.enum(['true', 'false']).optional() }),
   id: z.object({ id: objectId }),
   create: z.object({
     title: z.string().trim().min(1).max(200).optional(),
     icon: z.string().max(16).optional(),
     content: z.array(block).max(10_000).optional(),
-    workspace: objectId.optional(),
   }),
   update: z.object({
     title: z.string().trim().min(1).max(200).optional(),

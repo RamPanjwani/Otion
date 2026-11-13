@@ -94,8 +94,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-3"><h2 className="text-sm font-semibold">All notes</h2><span className="rounded-md bg-panel px-2 py-1 text-xs text-muted">{notes.length}</span></div>
             <div className="flex items-center gap-2">{selectionMode ? <><button type="button" onClick={closeSelection} className="secondary-action px-3 py-2 text-sm"><X size={16} /> Cancel</button><button type="button" onClick={moveSelectedToTrash} disabled={!selectedIds.size || deleting} className="danger-action px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"><Trash2 size={16} /> {deleting ? 'Moving…' : `Trash ${selectedIds.size || ''}`}</button></> : <button type="button" onClick={() => setSelectionMode(true)} className="secondary-action px-3 py-2 text-sm"><CheckSquare size={16} /> Select notes</button>}</div>
           </div>
-          {bulkError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{bulkError}</p>}
-          {loading ? <Loading /> : error ? <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</p> : visibleNotes.length ? (
+          {bulkError && <p role="alert" className="error-alert mb-4">{bulkError}</p>}
+          {loading ? <Loading /> : error ? <p className="error-alert mb-4">{error}</p> : visibleNotes.length ? (
             <div
               className="overflow-hidden rounded-xl border border-line bg-surface"
               style={isVirtualized ? { height: `${totalHeight}px`, position: 'relative' } : undefined}

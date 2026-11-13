@@ -1,10 +1,9 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Note = require('../models/Note');
 const SharePermission = require('../models/SharePermission');
 const UserNotePreference = require('../models/UserNotePreference');
-const Workspace = require('../models/Workspace');
-const WorkspaceMembership = require('../models/WorkspaceMembership');
 const CollaborationState = require('../models/CollaborationState');
 const CollaborationUpdate = require('../models/CollaborationUpdate');
 const NoteRevision = require('../models/NoteRevision');
@@ -13,6 +12,7 @@ const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
 const Invitation = require('../models/Invitation');
 const { evictDocument } = require('../services/collaborationService');
+const { runTransaction } = require('../utils/runTransaction');
 
 const profile = asyncHandler(async (req, res) => {
   req.user.name = req.body.name ?? req.user.name;
@@ -28,14 +28,14 @@ const changePassword = asyncHandler(async (req, res) => {
     throw new Error('Current password is incorrect');
   }
   user.password = req.body.newPassword;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
+  req.app.get('io')?.disconnectUser(user._id);
   res.json({ message: 'Password changed successfully' });
 });
 
 const exportAccount = asyncHandler(async (req, res) => {
-  const [workspaces, memberships, ownedNotes, permissions, preferences, comments] = await Promise.all([
-    Workspace.find({ owner: req.user._id }).lean(),
-    WorkspaceMembership.find({ user: req.user._id }).lean(),
+  const [ownedNotes, permissions, preferences, comments] = await Promise.all([
     Note.find({ user: req.user._id }).lean(),
     SharePermission.find({ userId: req.user._id }).lean(),
     UserNotePreference.find({ user: req.user._id }).lean(),
@@ -45,8 +45,6 @@ const exportAccount = asyncHandler(async (req, res) => {
   res.json({
     exportedAt: new Date().toISOString(),
     profile: { _id: req.user._id, name: req.user.name, email: req.user.email, avatarUrl: req.user.avatarUrl, createdAt: req.user.createdAt },
-    workspaces,
-    memberships,
     notes: ownedNotes,
     sharedPermissions: permissions,
     preferences,
@@ -65,22 +63,22 @@ const deleteAccount = asyncHandler(async (req, res) => {
   const collaborators = await SharePermission.find({ noteId: { $in: noteIds } }).lean();
   collaborators.forEach((permission) => req.app.get('io')?.to(`user:${permission.userId}`).emit('note-remove', { noteId: String(permission.noteId) }));
   noteIds.forEach((noteId) => evictDocument(noteId));
-  const ownedWorkspaces = await Workspace.find({ owner: user._id }).distinct('_id');
-  await Promise.all([
-    CollaborationState.deleteMany({ note: { $in: noteIds } }),
-    CollaborationUpdate.deleteMany({ note: { $in: noteIds } }),
-    NoteRevision.deleteMany({ note: { $in: noteIds } }),
-    PublicShare.deleteMany({ note: { $in: noteIds } }),
-    Comment.deleteMany({ $or: [{ note: { $in: noteIds } }, { author: user._id }] }),
-    Notification.deleteMany({ $or: [{ note: { $in: noteIds } }, { recipient: user._id }, { actor: user._id }] }),
-    Invitation.deleteMany({ $or: [{ note: { $in: noteIds } }, { inviter: user._id }, { email: user.email }] }),
-    SharePermission.deleteMany({ $or: [{ noteId: { $in: noteIds } }, { userId: user._id }] }),
-    UserNotePreference.deleteMany({ $or: [{ note: { $in: noteIds } }, { user: user._id }] }),
-    WorkspaceMembership.deleteMany({ $or: [{ workspace: { $in: ownedWorkspaces } }, { user: user._id }] }),
-    Workspace.deleteMany({ _id: { $in: ownedWorkspaces } }),
-    Note.deleteMany({ _id: { $in: noteIds } }),
-  ]);
-  await user.deleteOne();
+
+  await runTransaction(async (session) => {
+    const opts = session ? { session } : {};
+    await CollaborationState.deleteMany({ note: { $in: noteIds } }, opts);
+    await CollaborationUpdate.deleteMany({ note: { $in: noteIds } }, opts);
+    await NoteRevision.deleteMany({ note: { $in: noteIds } }, opts);
+    await PublicShare.deleteMany({ note: { $in: noteIds } }, opts);
+    await Comment.deleteMany({ $or: [{ note: { $in: noteIds } }, { author: user._id }] }, opts);
+    await Notification.deleteMany({ $or: [{ note: { $in: noteIds } }, { recipient: user._id }, { actor: user._id }] }, opts);
+    await Invitation.deleteMany({ $or: [{ note: { $in: noteIds } }, { inviter: user._id }, { email: user.email }] }, opts);
+    await SharePermission.deleteMany({ $or: [{ noteId: { $in: noteIds } }, { userId: user._id }] }, opts);
+    await UserNotePreference.deleteMany({ $or: [{ note: { $in: noteIds } }, { user: user._id }] }, opts);
+    await Note.deleteMany({ _id: { $in: noteIds } }, opts);
+    await user.deleteOne(opts);
+  });
+
   req.app.get('io')?.disconnectUser(user._id);
   res.json({ message: 'Account deleted' });
 });

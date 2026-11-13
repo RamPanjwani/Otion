@@ -18,7 +18,6 @@ const { applyUpdate: applyCollaborationUpdate, flushAllDocuments, syncPayload } 
 const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const shareRoutes = require('./routes/shareRoutes');
-const workspaceRoutes = require('./routes/workspaceRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const commentRoutes = require('./routes/commentRoutes');
@@ -116,7 +115,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/share', shareRoutes);
-app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/comments', commentRoutes);
@@ -129,8 +127,8 @@ io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication required'));
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('name email avatarUrl');
-    if (!user) return next(new Error('Authentication required'));
+    const user = await User.findById(decoded.id).select('name email avatarUrl tokenVersion');
+    if (!user || user.tokenVersion !== (decoded.version ?? 0)) return next(new Error('Authentication required'));
     socket.data.userId = String(user._id);
     socket.data.user = { _id: String(user._id), name: user.name, avatarUrl: user.avatarUrl };
     socket.join(`user:${user._id}`);

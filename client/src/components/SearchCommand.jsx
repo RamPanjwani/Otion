@@ -135,7 +135,11 @@ export default function SearchCommand({ open, onClose, notes = [], onNavigate })
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface text-xl ring-1 ring-line">{note.icon || DEFAULT_NOTE_ICON}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-ink">{note.title || 'Untitled note'}</span>
-                    <span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Clock3 size={11} /> Updated {new Date(note.updatedAt).toLocaleDateString()}</span>
+                    {note.matchPreview ? (
+                      <span className="mt-0.5 block truncate text-xs text-muted/90 italic">…{note.matchPreview}…</span>
+                    ) : (
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><Clock3 size={11} /> Updated {new Date(note.updatedAt).toLocaleDateString()}</span>
+                    )}
                   </span>
                   <ArrowUpRight size={15} className="shrink-0 opacity-45" />
                 </button>
