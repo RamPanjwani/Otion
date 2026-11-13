@@ -1,7 +1,9 @@
-# Render Blueprint for the Otion API.
+# Render Blueprint for Otion Full-Stack Cloud Deployment.
 #
-# Deployed directly from the prebuilt Docker Hub container image
-# (docker.io/rampanjwani/otion-server:latest) instead of building from GitHub source.
+# Both Backend and Frontend services deploy directly from pre-built,
+# immutable Docker Hub container images:
+# - Backend API:  docker.io/rampanjwani/otion-server:latest
+# - Frontend Web: docker.io/rampanjwani/otion-client:latest
 
 services:
   - type: web
@@ -19,7 +21,7 @@ services:
       - key: PORT
         value: "5000"
       - key: CLIENT_URLS
-        value: https://otion-nine.vercel.app
+        value: https://otion-nine.vercel.app,https://otion-client.onrender.com
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
@@ -29,3 +31,16 @@ services:
         sync: false
       - key: SENTRY_ENVIRONMENT
         sync: false
+
+  - type: web
+    name: otion-client
+    runtime: image
+    image:
+      url: docker.io/rampanjwani/otion-client:latest
+    region: singapore
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "80"

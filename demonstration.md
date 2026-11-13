@@ -25,9 +25,9 @@
 | **Demo Owner Account** | `demo@otion.app` / `OtionDemo123!` | Primary demo account |
 | **Collaborator Account** | `maya@otion.app` / `OtionDemo123!` | Editor role for real-time testing |
 | **Viewer Account** | `sam@otion.app` / `OtionDemo123!` | Viewer / Commenter role |
-| **Docker Hub API** | [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) | Multi-stage Node.js container deployed on Render |
-| **Docker Hub Client** | [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client) | Multi-stage Nginx container image |
-| **Cloud Deployment** | Vercel + Render (Docker Image) | **Zero local deployment**: 100% cloud-deployed |
+| **Docker Hub API Image** | [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) | Backend container deployed on Render (`runtime: image`) |
+| **Docker Hub Client Image** | [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client) | Frontend container deployed on Render & Vercel |
+| **Cloud Deployment** | Render (Docker) + Vercel (Container) | **100% container-deployed in the cloud** |
 
 ---
 
@@ -102,13 +102,17 @@
 
 ### 8. Docker & Containerization
 - **Backend Container**: Multi-stage build based on `node:22-alpine`, non-root execution (`USER node`), health checks, image size ~120MB.
-- **Frontend Container**: Multi-stage build using Vite and `nginx:alpine`, SPA routing (`try_files`), Brotli/Gzip compression, image size ~25MB.
-- **Docker Hub Images**: Multi-platform container images published to Docker Hub at [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) and [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
-- **Cloud-Native Deployment**: We strictly use Docker images to deploy on cloud platforms (Render and Vercel). Local deployment has been removed.
+- **Frontend Container**: Multi-stage build using Vite and `nginx:alpine`, SPA routing (`try_files`), dynamic `${PORT}` substitution, Brotli/Gzip compression, image size ~25MB.
+- **Docker Hub Images**: Both backend and frontend multi-platform container images are hosted on Docker Hub at [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) and [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
+- **Both Deployed from Container Images**:
+  - **Backend on Render**: Deployed directly via `render.yaml` with `runtime: image` pulling `docker.io/rampanjwani/otion-server:latest`.
+  - **Frontend on Render**: Deployed directly via `render.yaml` with `runtime: image` pulling `docker.io/rampanjwani/otion-client:latest`.
+  - **Frontend on Vercel**: Deployed as an OCI container image via `client/Dockerfile.vercel`.
+  - **Zero Local Deployment**: Neither frontend nor backend relies on local execution; both run as managed cloud containers.
 
 ### 9. DevOps & Deployment
-- **Render Cloud Service (Docker Image)**: Render is configured with `runtime: image` in `render.yaml` to pull and run `docker.io/rampanjwani/otion-server:latest` directly from Docker Hub, providing full WebSocket and Express 5 support without build-step overhead.
-- **Vercel Cloud Platform (Edge CDN)**: Vercel hosts the single-page application at [https://otion-nine.vercel.app](https://otion-nine.vercel.app) with global edge distribution, automatic TLS, and SPA rewrite rules.
+- **Render Cloud Service (Docker Images)**: Render is configured with `runtime: image` in `render.yaml` to pull and run both `docker.io/rampanjwani/otion-server:latest` and `docker.io/rampanjwani/otion-client:latest` directly from Docker Hub, providing full WebSocket and Express 5 support without build-step overhead.
+- **Vercel Cloud Platform (Container Deployment)**: Vercel deploys the frontend as a container workload via `client/Dockerfile.vercel` connected to the Render container API.
 - **MongoDB Atlas**: Managed cloud database replica set hosting all collections, indexes, and seeded demo accounts.
 - **CI/CD Pipeline**: Automated GitHub Actions workflow ([.github/workflows/ci.yml](file:///home/ram/Documents/Projects/Otion/.github/workflows/ci.yml)) running 4 stages:
   1. *Lint & Test*: ESLint, client unit tests, server integration tests.
@@ -206,11 +210,11 @@ Yes, exhaustively on both frontend and backend using **Zod**. Every API route at
 
 #### Q3: Have you deployed it?
 **Answer:**  
-Yes. **We do not deploy locally; local deployment has been completely removed in favor of cloud-native production deployment on Vercel and Render using Docker container images:**
+Yes. **Both the backend AND the frontend are deployed from container images in the cloud:**
 - **Backend API (Render Container Deployment)**: Render is configured with `runtime: image` in `render.yaml`, pulling the prebuilt container directly from `docker.io/rampanjwani/otion-server:latest` on Docker Hub. Render runs the container with WebSockets, health probes, and cloud connection to MongoDB Atlas.
-- **Frontend SPA (Vercel Cloud Platform)**: Deployed to Vercel ([https://otion-nine.vercel.app](https://otion-nine.vercel.app)) with worldwide edge caching, automatic SSL, and rewrite rules. Also published as a container image on Docker Hub (`rampanjwani/otion-client:latest`).
+- **Frontend Web (Render & Vercel Container Deployment)**: The frontend is deployed as a container image: on Render as `otion-client` (`runtime: image` pulling `docker.io/rampanjwani/otion-client:latest`), and on Vercel using `client/Dockerfile.vercel`.
 - **Cloud Database (MongoDB Atlas)**: Hosted on a MongoDB 7.0 cloud replica set with all 13 migrations applied and pre-seeded demo accounts (`demo@otion.app`, `maya@otion.app`, `sam@otion.app`).
-- **Continuous Deployment (GitHub Actions)**: Automated CI builds Docker images, validates container health, pushes to Docker Hub, and deploys to Render and Vercel.
+- **Continuous Deployment (GitHub Actions)**: Automated CI builds Docker images, validates container health, pushes both images to Docker Hub, and triggers cloud redeployments.
 
 #### Q4: Which React applications / version are you using?
 **Answer:**  

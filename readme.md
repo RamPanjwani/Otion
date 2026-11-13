@@ -244,12 +244,13 @@ Otion is deployed entirely to cloud infrastructure (**Render**, **Vercel**, and 
 - **Environment**: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URLS=https://otion-nine.vercel.app`, with credentials securely injected (`MONGO_URI`, `JWT_SECRET`).
 - **Automated Rolling Restart**: When a new image is pushed to Docker Hub, Render executes a zero-downtime rolling restart pulling the latest digest.
 
-### 2. Frontend — Production Edge Deployment (Vercel)
+### 2. Frontend — Container Deployment via Docker Image (Render & Vercel)
 
-- **Live URL**: <https://otion-nine.vercel.app>
-- **Deployment**: Deployed on Vercel Edge Network with global CDN caching, automatic SSL termination, and SPA fallback routing (`client/vercel.json`).
-- **Container Artifact**: Mirrored on Docker Hub as [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
+- **Render Web Service (`otion-client`)**: Configured directly in [render.yaml](file:///home/ram/Documents/Projects/Otion/render.yaml) with **`runtime: image`** pulling `docker.io/rampanjwani/otion-client:latest` from Docker Hub. Render runs the Nginx container with automated health checks on port 80.
+- **Vercel Container Deployment**: Deployed using Vercel's native container runtime via [`client/Dockerfile.vercel`](client/Dockerfile.vercel) and [`client/vercel.json`](client/vercel.json) with client-side SPA routing.
+- **Docker Hub Repository**: Pre-built multi-platform images available at [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
 - **Environment Configuration**: Connected to the Render container API (`VITE_API_URL=https://otion-api.onrender.com/api`) and WebSocket server (`VITE_SOCKET_URL=https://otion-api.onrender.com`).
+- **Live Production URL**: <https://otion-nine.vercel.app>
 
 ### 3. Database — Cloud Replica Set (MongoDB Atlas)
 
