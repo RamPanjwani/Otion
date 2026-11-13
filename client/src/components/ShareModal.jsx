@@ -231,8 +231,8 @@ export default function ShareModal({ open, onClose, noteId }) {
                 Disable link
               </button>
             ) : (
-              <button type="button" onClick={togglePublic} className="primary-action whitespace-nowrap px-4 py-2 text-sm">
-                Create & Copy link
+              <button type="button" onClick={togglePublic} aria-label="Create read-only link" className="primary-action whitespace-nowrap px-4 py-2 text-sm">
+                Create read-only link
               </button>
             )}
           </div>

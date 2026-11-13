@@ -8,7 +8,7 @@ test('a password-protected public link shows the note read-only', async ({ page,
 
   await page.getByRole('button', { name: 'Share', exact: true }).click();
   await page.getByPlaceholder('At least 8 characters').fill('e2e-public-pass');
-  await page.getByRole('button', { name: 'Create read-only link' }).click();
+  await page.getByRole('button', { name: /(Create read-only link|Create & Copy link)/ }).click();
 
   const shareLink = page.locator('span.truncate').filter({ hasText: '/public/' });
   await expect(shareLink).toBeVisible();
