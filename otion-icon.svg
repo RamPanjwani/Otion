@@ -1,54 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- Isolated Pure White Background (1:1 Aspect Ratio) -->
+  <!-- Isolated Pure White Background (1:1 Square) -->
   <rect width="1024" height="1024" fill="#ffffff" />
 
   <!-- 
-    Otion Squircle App Icon (1024x1024)
-    Circular 'O' Monogram & Collaborative Workspace Edition
-    Pure Black & White Monochromatic UI Icon (#000000 & #ffffff)
-    Modern, friendly, ultra-minimalist geometry with perfect micro-size legibility
+    Otion Note-Taking & Study Squircle App Icon (1024x1024)
+    Design System:
+    - Bold circular "O" monogram (Otion brand mark)
+    - Ruled study note lines (note-taking and studying metaphor)
+    - Sleek study pencil actively writing into the "O"
+    - Pure Black & White Monochromatic UI Icon (#000000 & #ffffff)
+    - Zero gradients, zero blurs, zero paper fold, zero camera resemblance
   -->
 
   <!-- Solid Black Squircle Container -->
   <rect x="128" y="128" width="768" height="768" rx="192" ry="192" fill="#000000" />
 
-  <!-- Circular 'O' Note Monogram (Pure White #ffffff) -->
-  <g fill="#ffffff">
-    <!-- Outer Circular 'O' Ring with Top-Right Fold Bevel -->
+  <g>
+    <!-- Bold Circular "O" Ring (Optically centered at 492, 524 to balance the pencil) -->
     <path fill-rule="evenodd" d="
-      M 512 256 
-      C 653.4 256 768 370.6 768 512 
-      C 768 653.4 653.4 768 512 768 
-      C 370.6 768 256 653.4 256 512 
-      C 256 370.6 370.6 256 512 256 Z
+      M 492 284 
+      C 624.5 284 732 391.5 732 524 
+      C 732 656.5 624.5 764 492 764 
+      C 359.5 764 252 656.5 252 524 
+      C 252 391.5 359.5 284 492 284 Z
 
-      M 512 376 
-      C 437 376 376 437 376 512 
-      C 376 587 437 648 512 648 
-      C 587 648 648 587 648 512 
-      C 648 437 587 376 512 376 Z
-    " />
+      M 492 396 
+      C 421.3 396 364 453.3 364 524 
+      C 364 594.7 421.3 652 492 652 
+      C 562.7 652 620 594.7 620 524 
+      C 620 453.3 562.7 396 492 396 Z
+    " fill="#ffffff" />
 
-    <!-- Top-Right Folded Corner Flap (Folded Paper Metaphor) -->
-    <path d="M 648 276 
-             C 648 344 700 396 768 396 
-             L 768 368 
-             C 712 368 668 324 668 268 
-             Z" />
+    <!-- 3 Ruled Notebook Study Lines (White) -->
+    <rect x="416" y="460" width="152" height="26" rx="13" fill="#ffffff" />
+    <rect x="416" y="512" width="152" height="26" rx="13" fill="#ffffff" />
+    <rect x="416" y="564" width="104" height="26" rx="13" fill="#ffffff" />
 
-    <!-- Central Collaboration Focus Node (Core of the 'O' Portal) -->
-    <circle cx="512" cy="512" r="32" />
-  </g>
+    <!-- 
+      Study Pencil:
+      Positioned at top-right (angled at 45°), writing notes directly into the "O".
+      The negative space channel creates a crisp separation gap across the "O" loop.
+    -->
+    <g transform="translate(638, 376) rotate(45)">
+      <!-- Black Negative Space Cutout Outline -->
+      <path d="M -34 -170 L 34 -170 L 34 16 L 0 76 L -34 16 Z" 
+            stroke="#000000" stroke-width="24" stroke-linejoin="round" fill="#000000" />
+      
+      <!-- Solid White Pencil Shaft -->
+      <rect x="-26" y="-160" width="52" height="172" rx="4" fill="#ffffff" />
+      
+      <!-- Sharpened Cone Tip (White) -->
+      <polygon points="-26,12 26,12 0,66" fill="#ffffff" />
 
-  <!-- Precision Negative Space Channels (Pure Black #000000) -->
-  <g fill="#000000">
-    <!-- Fold Separation Channel -->
-    <path d="M 632 260 
-             L 632 412 
-             C 632 420 638 426 646 426 
-             L 780 426 
-             L 780 404 
-             L 652 404 
-             L 652 260 Z" />
+      <!-- Precision Black Internal Details -->
+      <!-- Eraser Ferrule Band -->
+      <rect x="-30" y="-124" width="60" height="12" fill="#000000" />
+      <!-- Graphite Writing Lead Tip -->
+      <polygon points="-11,40 11,40 0,66" fill="#000000" />
+    </g>
   </g>
 </svg>
