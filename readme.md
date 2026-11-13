@@ -10,6 +10,16 @@ formatting, conflict-safe realtime editing with Yjs CRDTs, presence and live cur
 history, role-based sharing, tokenized public links, comments with mentions, notifications, search,
 favorites, and a trash with restore.
 
+## Screenshots
+
+| Desktop Dashboard & Workspace | Real-Time Block Editor |
+| :---: | :---: |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Editor](docs/screenshots/editor.png) |
+
+| Landing Page | Mobile Responsive View |
+| :---: | :---: |
+| ![Landing Page](docs/screenshots/home.png) | ![Mobile View](docs/screenshots/mobile.png) |
+
 ## Live deployment
 
 | Service | URL |

@@ -91,7 +91,7 @@ Applied per IP with `express-rate-limit` (draft-8 headers, JSON 429 body). Limit
 | Scope | Window | Limit |
 | --- | --- | --- |
 | All `/api` routes | 15 minutes | 500 requests |
-| `POST /api/auth/register`, `POST /api/auth/login`, `PATCH /api/auth/password`, `DELETE /api/auth/account` | 15 minutes | 30 requests |
+| `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `PATCH /api/auth/password`, `DELETE /api/auth/account` | 15 minutes | 30 requests |
 | `POST /api/public/:token/unlock` | 15 minutes | 20 requests |
 
 ## 5. Roles
@@ -134,6 +134,10 @@ Returns `200` when Mongoose is connected (or `NODE_ENV=test`), otherwise `503` w
 | --- | --- | --- | --- |
 | POST | `/register` | — | `{ name, email, password, invitationToken? }` |
 | POST | `/login` | — | `{ email, password }` |
+| POST | `/forgot-password` | — | `{ email }` |
+| POST | `/reset-password` | — | `{ token, newPassword }` |
+| POST | `/verify-email` | — | `{ token }` |
+| POST | `/resend-verification` | Bearer | — |
 | GET | `/me` | Bearer | — |
 | PATCH | `/profile` | Bearer | `{ name?, avatarUrl? }` |
 | PATCH | `/password` | Bearer | `{ currentPassword, newPassword }` |
@@ -141,7 +145,8 @@ Returns `200` when Mongoose is connected (or `NODE_ENV=test`), otherwise `503` w
 | DELETE | `/account` | Bearer | `{ password }` |
 
 **POST /register** — `name` 1–100, `email` valid, `password` 8–128. Creates the account and its
-personal workspace. When `invitationToken` is supplied, the pending invitation must match the email
+personal workspace. In graceful email mode, returns an active JWT immediately with `isEmailVerified: false`
+and dispatches an email verification token. When `invitationToken` is supplied, the pending invitation must match the email
 and be unexpired; on success the note permission (and guest workspace membership) is created and the
 invitation is marked `accepted`. Returns `201`:
 
@@ -151,6 +156,7 @@ invitation is marked `accepted`. Returns `201`:
   "name": "Demo Owner",
   "email": "demo@otion.app",
   "avatarUrl": "",
+  "isEmailVerified": false,
   "token": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
@@ -158,6 +164,14 @@ invitation is marked `accepted`. Returns `201`:
 Errors: `400` duplicate email, `400` invalid/expired invitation.
 
 **POST /login** — returns the same shape (`200`). `401 Invalid email or password` on failure.
+
+**POST /forgot-password** — `{ email }`. Generates a cryptographic 32-byte recovery token (1-hour expiry, stored as SHA-256 hash) and sends an HTML recovery email via Resend. To prevent user enumeration, always returns `{ "message": "If an account with that email exists, a password reset link has been sent." }` with status `200`.
+
+**POST /reset-password** — `{ token, newPassword }`. Validates the token against unexpired hashes in MongoDB, updates the password with bcrypt (12 rounds), increments `tokenVersion` to invalidate past sessions, and returns `{ "message": "Password reset successful. Please sign in with your new password." }`. Returns `400` if the token is invalid or expired.
+
+**POST /verify-email** — `{ token }`. Validates the email verification token against unexpired hashes in MongoDB, sets `isEmailVerified: true`, clears verification token fields, and returns `{ "message": "Email verified successfully." }`. Returns `400` if the token is invalid or expired.
+
+**POST /resend-verification** — Bearer. Resends a fresh verification email to the authenticated user's email address. Returns `{ "message": "Verification email sent successfully." }`. Returns `400` if the email is already verified.
 
 **GET /me** — `{ _id, name, email, avatarUrl }`.
 

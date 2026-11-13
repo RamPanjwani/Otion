@@ -18,6 +18,7 @@ dist/
 server/backups/
 
 # Playwright
+.playwright-mcp/
 client/test-results/
 client/playwright-report/
 client/blob-report/
