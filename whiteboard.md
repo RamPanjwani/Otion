@@ -290,20 +290,25 @@ Every incoming HTTP request in Otion passes through a declarative validation lay
 ## 9. Containerization & Deployment Pipeline
 
 ### How it works
-The entire Otion ecosystem is containerized and automated via a 4-stage GitHub Actions CI/CD pipeline:
+The entire Otion ecosystem is containerized, distributed via Docker Hub, and deployed using container-first infrastructure:
 1. **Multi-Stage Server Dockerfile**:
    - *Stage 1 (Builder)*: Installs production dependencies with `npm ci --omit=dev`.
-   - *Stage 2 (Runtime)*: Uses lightweight `node:22-alpine`, creates a dedicated non-root user (`node`), copies minimal production artifacts, exposes port 5000, and defines a container health check against `/api/health`.
+   - *Stage 2 (Runtime)*: Uses lightweight `node:20-alpine`, creates a dedicated non-root user (`node`), copies minimal production artifacts, exposes port 5000, and defines a container health check against `/api/health`.
 2. **Multi-Stage Client Dockerfile**:
    - *Stage 1 (Build)*: Runs `npm run build` using Vite.
    - *Stage 2 (Nginx)*: Serves static assets using `nginx:alpine` with gzip compression, security headers, and SPA fallback routing (`try_files $uri /index.html`).
-3. **CI/CD Pipeline** ([.github/workflows/deploy.yml](file:///home/ram/Documents/Projects/Otion/.github/workflows/deploy.yml)):
+3. **Container-First Deployment on Render**:
+   - Render is configured via `render.yaml` with `runtime: image` pointing to `docker.io/rampanjwani/otion-server:latest`.
+   - Instead of cloning Git and installing packages with `npm ci` on every deploy, Render pulls the pre-built, immutable image directly from Docker Hub.
+4. **CI/CD Pipeline** ([.github/workflows/ci.yml](file:///home/ram/Documents/Projects/Otion/.github/workflows/ci.yml)):
    - **Job 1: Lint & Unit Tests**: Runs ESLint and Node test runners across client and server.
    - **Job 2: E2E Playwright Tests**: Boots isolated MongoDB, seeds test database, and runs full end-to-end browser workflows.
-   - **Job 3: Container Build & Smoke**: Builds Docker containers and tests container startup.
-   - **Job 4: Automated Deployment**: Deploys frontend to Vercel CDN and backend to Render Web Service.
+   - **Job 3: Container Build, Smoke & Push**: Builds Docker images, validates container networking through Nginx, and pushes release tags (`rampanjwani/otion-server:latest`, `rampanjwani/otion-client:latest`) to Docker Hub.
+   - **Job 4: Automated Deployment**: Dispatches deploy triggers for zero-downtime container rolling restart on Render and edge deployment on Vercel.
 
 ### Why X instead of Y?
+- **Why deploy through prebuilt Docker images instead of building from GitHub on the host?**  
+  Deploying through Docker images provides **immutable, hermetic artifacts**. Building from Git directly on production servers suffers from "works on my machine" drift, slow build times (running `npm ci` and compiling dependencies on constrained server CPUs), potential npm registry outages, and exposed build-tool vulnerabilities in the runtime environment. Docker images ensure that the exact container binary tested and passed in CI is what runs in production.
 - **Why multi-stage Docker builds instead of single-stage images?**  
   Single-stage builds leave compiler toolchains, package manager caches, and development dependencies in the final image, resulting in image sizes > 1 GB. Multi-stage builds produce ultra-lean images (~120 MB for server, ~25 MB for client), decreasing vulnerability attack surface and pull times.
 - **Why non-root container user (`USER node`)?**  

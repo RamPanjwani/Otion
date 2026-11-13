@@ -103,17 +103,18 @@
 ### 8. Docker & Containerization
 - **Backend Container**: Multi-stage build based on `node:22-alpine`, non-root execution (`USER node`), health checks, image size ~120MB.
 - **Frontend Container**: Multi-stage build using Vite and `nginx:alpine`, SPA routing (`try_files`), Brotli/Gzip compression, image size ~25MB.
-- **Docker Compose**: Single command orchestration (`docker compose up`) bootstrapping MongoDB, API, and Client containers with local networking.
-- **Public Repositories**: Available on Docker Hub as `rampanjwani/otion-server:latest` and `rampanjwani/otion-client:latest`.
+- **Docker Hub Deployment**: Instead of deploying from raw GitHub source code, pre-built immutable container images are published to Docker Hub at `rampanjwani/otion-server:latest` and `rampanjwani/otion-client:latest`.
+- **Zero-Build Orchestration**: Entire full-stack application (MongoDB, Backend, Nginx-proxied Frontend) runs instantly on any machine via `docker compose pull && docker compose up -d` without needing Node, npm, or Git.
 
 ### 9. DevOps & Deployment
-- **Frontend Hosting**: Vercel Edge Network with worldwide CDN caching and automatic SSL.
-- **Backend Hosting**: Render Web Service with automated health checking, TLS termination, and continuous Git deployment.
-- **CI/CD Pipeline**: GitHub Actions workflow ([.github/workflows/deploy.yml](file:///home/ram/Documents/Projects/Otion/.github/workflows/deploy.yml)) running 4 parallel stages:
+- **Container-First API Deployment**: Render Web Service deployed directly from the pre-built Docker Hub container image (`docker.io/rampanjwani/otion-server:latest`) using `runtime: image` in `render.yaml`, eliminating build environment discrepancies and slow `npm ci` installs.
+- **Frontend Edge CDN**: Vercel Edge Network with worldwide caching, automatic SSL, and instant rollbacks.
+- **Database**: Cloud-hosted MongoDB Atlas 7.0 replica set.
+- **CI/CD Pipeline**: GitHub Actions workflow ([.github/workflows/ci.yml](file:///home/ram/Documents/Projects/Otion/.github/workflows/ci.yml)) running 4 automated jobs:
   1. *Lint & Test*: ESLint, client unit tests, server integration tests.
   2. *Browser E2E*: Playwright automated browser test suite against live MongoDB.
-  3. *Docker Build & Smoke*: Builds and validates container images.
-  4. *Production Deploy*: Automatic webhooks to Vercel and Render.
+  3. *Docker Build, Smoke & Push*: Builds images, validates container networking through Nginx, and pushes latest release tags to Docker Hub.
+  4. *Production Deploy*: Triggers image redeployment webhooks on Render and Vercel.
 
 ---
 
@@ -182,10 +183,16 @@ Follow this structured script during your evaluation presentation:
    - Click "Restore" $\rightarrow$ document immediately returns to the active workspace.
    - Show "Empty Trash" / "Delete Forever" and explain the cascading permanent delete process.
 
-### Step 8: Docker & CI/CD Pipeline
-1. Open a terminal and run `docker compose ps` or show `docker-compose.yml`.
-2. Show that containers run with non-root security (`USER node`) and alpine base images.
-3. Open GitHub Actions tab: show the green workflow run `43399054367` with all 4 jobs passing.
+### Step 8: Docker Container Deployment & CI/CD Pipeline
+1. Demonstrate container deployment from Docker Hub without building code:
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
+2. Show that containers run with non-root security (`USER node`) and lightweight Alpine base images.
+3. Open Docker Hub: show public images [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) and [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
+4. Explain how Render deploys the container image directly via `render.yaml` (`runtime: image`) instead of rebuilding from GitHub source code.
+5. Open GitHub Actions tab: show the green workflow run `43399054367` with automated container smoke tests and deployment.
 
 ---
 
@@ -203,12 +210,12 @@ Yes, exhaustively on both frontend and backend using **Zod**. Every API route at
 
 #### Q3: Have you deployed it?
 **Answer:**  
-Yes, the application is fully deployed to production in a modern decoupled architecture:
-- **Frontend**: Deployed on **Vercel** ([https://otion-nine.vercel.app](https://otion-nine.vercel.app)) with worldwide edge caching and automatic SSL.
-- **Backend API**: Deployed on **Render** ([https://otion-api.onrender.com](https://otion-api.onrender.com)) running the Node.js server with automatic health checks and WebSocket support.
-- **Database**: Hosted on **MongoDB Atlas** running a replica set in the cloud.
-- **Container Registry**: Multi-stage production container images are published to **Docker Hub** at `rampanjwani/otion-server:latest` and `rampanjwani/otion-client:latest`.
-- **CI/CD**: Fully automated via GitHub Actions with 4 stages (Lint/Test, Browser E2E, Docker Smoke, Deploy).
+Yes, and we deploy **directly through container images on Docker** rather than building raw source code on the hosting platform:
+- **Container Registry (Docker Hub)**: Production multi-stage images are published to Docker Hub at `rampanjwani/otion-server:latest` (or `rampanjwani/otion-api:latest`) and `rampanjwani/otion-client:latest`.
+- **Backend API (Render Image Deployment)**: Render is configured with `runtime: image` in `render.yaml`, pulling the prebuilt container directly from `docker.io/rampanjwani/otion-server:latest`. This eliminates server build times, compilation failures, and environment drift.
+- **Frontend SPA (Vercel CDN)**: Deployed to Vercel ([https://otion-nine.vercel.app](https://otion-nine.vercel.app)) with worldwide edge caching and automatic SSL. Also available containerized via Nginx in `rampanjwani/otion-client:latest`.
+- **Database**: Cloud-hosted MongoDB Atlas running a replica set.
+- **One-Command Deployment**: Anyone can deploy the entire application locally or on any cloud server with `docker compose pull && docker compose up -d` without needing Node, npm, or Git.
 
 #### Q4: Which React applications / version are you using?
 **Answer:**  

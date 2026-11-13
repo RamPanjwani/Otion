@@ -201,6 +201,25 @@ jobs:
           docker logs client || true
           docker logs mongo || true
 
+      - name: Push release images to Docker Hub
+        if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+            docker tag otion-api:ci rampanjwani/otion-server:latest
+            docker tag otion-api:ci rampanjwani/otion-api:latest
+            docker tag otion-client:ci rampanjwani/otion-client:latest
+            docker push rampanjwani/otion-server:latest
+            docker push rampanjwani/otion-api:latest
+            docker push rampanjwani/otion-client:latest
+            echo "Successfully pushed latest images to Docker Hub."
+          else
+            echo "DOCKERHUB credentials not configured in secrets; skipping automated push."
+          fi
+
   deploy:
     name: Deploy to Render and Vercel
     needs: [verify, e2e, docker]

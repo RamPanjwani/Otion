@@ -215,23 +215,29 @@ through nginx. CI repeats the build and a smoke boot on every push (`.github/wor
 
 ## Deployment
 
-**API — Render**
+**API — Container Deployment via Docker Image (Render)**
 
-- [`render.yaml`](render.yaml) declares the service: root directory `server`, region `singapore`,
-  build `npm ci`, start `npm start`, health check `/api/health`, Node 22. The service already exists
-  and deploys itself on every push to `main`, so the blueprint only matters if it has to be
-  re-created; apply it with Render → Blueprints → New Blueprint Instance.
-- Environment: `NODE_ENV=production`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI`
-  (Atlas) and `JWT_SECRET`. The secrets are `sync: false` in the blueprint, so Render prompts for
-  them and they never enter the repository. `SENTRY_DSN` / `SENTRY_ENVIRONMENT` are optional and
-  also `sync: false`. Because `render` v2.36 has no env-var command, variables are set in the
-  dashboard or through the Render REST API (see *Operations → Error tracking*).
-- Migrations are not run on boot. Production is at 13/13 (`MONGO_URI=... npm run migrate -- --check`
-  exits 0); apply new ones with `npm run migrate` against the Atlas URI. The CI `deploy` job runs the
-  `--check` gate so a release with a pending migration fails instead of serving a stale schema.
-- The live service is configured exactly as the blueprint describes: `npm ci`, `npm start`, health
-  check `/api/health`, region `singapore`, free plan. A health-check failure now triggers a Render
-  restart instead of silently serving a half-broken instance.
+- [`render.yaml`](render.yaml) declares the containerized service: `runtime: image` using `docker.io/rampanjwani/otion-server:latest`, region `singapore`, health check `/api/health`. Render pulls and deploys the prebuilt, immutable Docker Hub image directly instead of compiling from GitHub source, eliminating server build times, compiler dependencies, and build-environment drift.
+- Deploying the container: In the Render Dashboard, create a **Web Service** backed by **Existing Image** pointing to `docker.io/rampanjwani/otion-server:latest`, or apply the Blueprint via Render → Blueprints.
+- Environment: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI` (Atlas) and `JWT_SECRET`. Secrets are configured securely in Render environment variables.
+- Automated Image Redeploy: On new image release, Render triggers an instant zero-downtime rolling restart pulling the latest container digest.
+
+**Client — Static / Container Deployment**
+
+- **Production Edge**: Static build on Vercel (<https://otion-nine.vercel.app>) with global edge caching and automatic SSL.
+- **Self-Hosted Container**: Pull and run `rampanjwani/otion-client:latest` behind an Nginx reverse proxy using Docker or Kubernetes.
+
+**One-Command Full-Stack Docker Deployment**
+
+You can deploy the complete multi-tier system on any VPS, cloud VM, or server without installing Git, Node.js, or building from source:
+
+```bash
+curl -sO https://raw.githubusercontent.com/RamPanjwani/Otion/main/docker-compose.yml
+curl -sO https://raw.githubusercontent.com/RamPanjwani/Otion/main/.env.example && mv .env.example .env
+# Edit .env with your secrets, then launch:
+docker compose pull
+docker compose up -d
+```
 - **Staging** is a second free Render service, `otion-api-staging`, tracking `main` with
   `MONGO_URI=.../otion_staging`, its own `JWT_SECRET`, and the same build/start/health settings. It
   sleeps when idle, so its first request after a pause takes up to a minute. Vercel preview builds
