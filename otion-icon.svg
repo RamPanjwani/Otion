@@ -1,91 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- 
-    Otion Squircle App Icon (1024x1024)
-    Pure Black & White Edition (#000000 & #ffffff only)
-    Zero gradients, zero colors, zero grays, zero shadows
-  -->
-
-  <!-- Pure White Canvas Background -->
+  <!-- Isolated Pure White Background (1:1 Aspect Ratio) -->
   <rect width="1024" height="1024" fill="#ffffff" />
 
-  <!-- Centered Black Squircle App Icon Container -->
+  <!-- 
+    Otion Ultra-Minimalist Squircle App Icon (1024x1024)
+    Pure Black & White Monochromatic UI Icon
+    Aesthetic: Modern, friendly, prominent rounded corners, optical safe-zone centering
+    Zero gradients, zero strokes, zero blurs, zero intricate details
+  -->
+
+  <!-- Solid Black Squircle Container -->
   <rect x="128" y="128" width="768" height="768" rx="192" ry="192" fill="#000000" />
 
-  <!-- Main Otion 'O' Icon Mark (Pure White with Black Negative-Space Delineation) -->
-  <g>
-    <!-- Base Note Canvas / Back Wing -->
-    <path d="M 360 280 
-             C 440 230, 584 230, 664 280 
-             C 744 330, 784 430, 764 530 
-             C 744 630, 674 720, 580 754 
-             C 500 782, 420 760, 360 710 
-             C 310 668, 274 598, 274 512 
-             C 274 426, 305 320, 360 280 Z" 
-          fill="#ffffff" />
+  <!-- Document Silhouette (Pure White #ffffff) -->
+  <g fill="#ffffff">
+    <!-- Main Note Body with Angled Fold Notch -->
+    <path d="M 368 272 
+             L 576 272 
+             C 588 272 600 277 608 285 
+             L 691 368 
+             C 699 376 704 388 704 400 
+             L 704 704 
+             C 704 730.5 682.5 752 656 752 
+             L 368 752 
+             C 341.5 752 320 730.5 320 704 
+             L 320 320 
+             C 320 293.5 341.5 272 368 272 Z" />
 
-    <!-- Ruled Texture Lines on Back Wing (Black Negative Cuts) -->
-    <path d="M 390 380 Q 512 350 634 380" stroke="#000000" stroke-width="8" stroke-linecap="round" fill="none" />
-    <path d="M 370 440 Q 512 410 654 440" stroke="#000000" stroke-width="8" stroke-linecap="round" fill="none" />
-    <path d="M 360 500 Q 512 470 664 500" stroke="#000000" stroke-width="8" stroke-linecap="round" fill="none" />
-    <path d="M 370 560 Q 512 530 654 560" stroke="#000000" stroke-width="8" stroke-linecap="round" fill="none" />
-
-    <!-- Middle Flowing Leaf (Black Inversion with White Separation Gap) -->
-    <path d="M 664 280 
-             C 750 340, 770 470, 720 570 
-             C 670 670, 560 740, 450 740 
-             C 340 740, 260 660, 260 550 
-             C 260 450, 330 360, 430 330 
-             C 500 308, 590 320, 640 370 
-             C 580 430, 480 430, 410 470 
-             C 370 492, 350 530, 360 570 
-             C 375 620, 430 650, 480 650 
-             C 550 650, 610 600, 640 540 
-             C 680 460, 660 360, 664 280 Z" 
-          fill="#000000" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" />
-
-    <!-- Top Forward Page Fold (Solid White with Black Contour) -->
-    <path d="M 320 370 
-             C 360 280, 460 250, 560 270 
-             C 660 290, 730 370, 740 470 
-             C 750 570, 690 660, 600 700 
-             C 520 735, 430 720, 370 660 
-             C 440 640, 520 620, 570 570 
-             C 620 520, 630 450, 590 390 
-             C 550 330, 470 320, 400 340 
-             C 360 352, 336 362, 320 370 Z" 
-          fill="#ffffff" stroke="#000000" stroke-width="14" stroke-linejoin="round" />
-
-    <!-- Origami Dynamic Crease Line -->
-    <path d="M 320 370 Q 420 330 520 340 Q 640 355 690 440 Q 735 520 700 620" 
-          stroke="#000000" stroke-width="8" stroke-linecap="round" fill="none" />
-
-    <!-- Center Diamond Core -->
-    <path d="M 512 430 
-             L 556 496 
-             L 512 562 
-             L 468 496 Z" 
-          fill="#000000" stroke="#ffffff" stroke-width="10" />
-    <path d="M 512 448 
-             L 542 496 
-             L 512 544 
-             L 482 496 Z" 
-          fill="#ffffff" />
+    <!-- Folded Corner Flap -->
+    <path d="M 596 272 
+             C 596 272 596 364 596 368 
+             C 596 374 602 380 608 380 
+             L 704 380 
+             C 704 380 616 292 596 272 Z" />
   </g>
 
-  <!-- Top-Right Inspiration Sparkle Star -->
-  <g transform="translate(685, 235)">
-    <!-- 4-point star -->
-    <path d="M 0 -36 
-             Q 0 0 36 0 
-             Q 0 0 0 36 
-             Q 0 0 -36 0 
-             Q 0 0 0 -36 Z" 
-          fill="#ffffff" />
-    <circle cx="0" cy="0" r="7" fill="#000000" />
-  </g>
+  <!-- Precision Negative Space Channels & Flow Elements (Pure Black #000000) -->
+  <g fill="#000000">
+    <!-- Fold Separation Negative Space Incision -->
+    <path d="M 576 264 
+             L 576 392 
+             C 576 400 584 408 592 408 
+             L 712 408 
+             L 712 388 
+             L 596 388 
+             L 596 264 Z" />
 
-  <!-- Small secondary twinkle star -->
-  <g transform="translate(760, 310)">
-    <path d="M 0 -18 Q 0 0 18 0 Q 0 0 0 18 Q 0 0 -18 0 Q 0 0 0 -18 Z" fill="#ffffff" />
+    <!-- Line 1: Header Note Flow Bar -->
+    <rect x="384" y="472" width="256" height="44" rx="22" />
+
+    <!-- Line 2: Note Content Flow Bar -->
+    <rect x="384" y="548" width="168" height="44" rx="22" />
+
+    <!-- Interactive Collaboration Node -->
+    <circle cx="606" cy="570" r="22" />
   </g>
 </svg>
