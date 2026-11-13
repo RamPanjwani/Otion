@@ -188,56 +188,74 @@ demo sign-in, note creation plus autosave surviving a reload, and a password-pro
 that renders read-only. Install Chromium once with `npx playwright install chromium`, and override
 `E2E_MONGO_URI` when MongoDB needs credentials.
 
-## Docker & Container Deployment
+## Docker & Cloud Deployment
 
-Pre-built multi-platform container images are deployed and hosted on **Docker Hub**:
+Otion is deployed entirely to cloud infrastructure (**Render**, **Vercel**, and **MongoDB Atlas**) using container images hosted on **Docker Hub**. **Local deployment is removed** in favor of verified, automated cloud container deployments.
+
+### Public Docker Hub Repositories
 
 - **Backend API & Realtime Engine**: [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) (alias: [`rampanjwani/otion-api:latest`](https://hub.docker.com/r/rampanjwani/otion-api))
 - **Frontend Web & Nginx Proxy**: [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client)
 
-### Running with Docker Compose
+---
 
-The compose stack runs MongoDB, the API and an nginx-served client, with health-checked startup
-ordering and `/api` + `/socket.io` proxying. Docker Compose v2+ is required (`docker compose`).
+## Cloud Deployment Architecture (Vercel & Render)
 
-```bash
-cp .env.example .env     # set JWT_SECRET (and CLIENT_URLS if needed)
-docker compose up -d     # automatically pulls rampanjwani/otion-* images
-docker compose exec server npm run migrate
-docker compose exec -e CLIENT_URL=http://localhost:8080 server npm run seed   # optional demo data
+```
+                    ┌─────────────────────────┐
+                    │    GitHub Repository    │
+                    └───────────┬─────────────┘
+                                │ Push to main
+                                ▼
+                    ┌─────────────────────────┐
+                    │ GitHub Actions CI / CD  │
+                    │ 1. Lint, Test & E2E     │
+                    │ 2. Build Docker Images  │
+                    │ 3. Push to Docker Hub   │
+                    └───────────┬─────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        ▼                                               ▼
+┌───────────────────────────────┐       ┌───────────────────────────────┐
+│     Vercel Edge Platform      │       │     Render Cloud Service      │
+│   https://otion-nine.vercel.app  │       │  https://otion-api.onrender.com │
+│                               │       │                               │
+│  - Production React 19 Client │       │  - Deployed via Docker Image: │
+│  - Edge routing & SSL         │       │    rampanjwani/otion-server   │
+│  - Rewrites to index.html     │       │  - WebSocket & Express 5 API  │
+└───────────────┬───────────────┘       └───────────────┬───────────────┘
+                │                                       │
+                │              API & WebSockets         │
+                └───────────────────────────────────────┤
+                                                        ▼
+                                        ┌───────────────────────────────┐
+                                        │      MongoDB Atlas Cloud      │
+                                        │    - 13 Migrations Applied    │
+                                        │    - Seeded Demo Accounts     │
+                                        └───────────────────────────────┘
 ```
 
-Open <http://localhost:8080>. `docker compose down` stops the stack and keeps the Mongo volume.
+### 1. API — Container Deployment via Docker Image (Render)
 
-The stack is verified locally: both images build, the health gates order startup mongo → server →
-client, and the health probe, SPA deep links, login, Socket.IO handshake and public notes all work
-through nginx. CI repeats the build and a smoke boot on every push (`.github/workflows/ci.yml`).
+- [`render.yaml`](render.yaml) configures the cloud service with **`runtime: image`** pulling `docker.io/rampanjwani/otion-server:latest` directly from Docker Hub.
+- **Why Image Deployment**: Render pulls and deploys the prebuilt, immutable Docker Hub container image directly instead of compiling from raw Git source code. This eliminates server build times, compiler dependencies, and build-environment drift.
+- **Live Endpoint**: <https://otion-api.onrender.com/api/health>
+- **WebSocket Protocol**: `wss://otion-api.onrender.com`
+- **Environment**: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URLS=https://otion-nine.vercel.app`, with credentials securely injected (`MONGO_URI`, `JWT_SECRET`).
+- **Automated Rolling Restart**: When a new image is pushed to Docker Hub, Render executes a zero-downtime rolling restart pulling the latest digest.
 
-## Deployment
+### 2. Frontend — Production Edge Deployment (Vercel)
 
-**API — Container Deployment via Docker Image (Render)**
+- **Live URL**: <https://otion-nine.vercel.app>
+- **Deployment**: Deployed on Vercel Edge Network with global CDN caching, automatic SSL termination, and SPA fallback routing (`client/vercel.json`).
+- **Container Artifact**: Mirrored on Docker Hub as [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client).
+- **Environment Configuration**: Connected to the Render container API (`VITE_API_URL=https://otion-api.onrender.com/api`) and WebSocket server (`VITE_SOCKET_URL=https://otion-api.onrender.com`).
 
-- [`render.yaml`](render.yaml) declares the containerized service: `runtime: image` using `docker.io/rampanjwani/otion-server:latest`, region `singapore`, health check `/api/health`. Render pulls and deploys the prebuilt, immutable Docker Hub image directly instead of compiling from GitHub source, eliminating server build times, compiler dependencies, and build-environment drift.
-- Deploying the container: In the Render Dashboard, create a **Web Service** backed by **Existing Image** pointing to `docker.io/rampanjwani/otion-server:latest`, or apply the Blueprint via Render → Blueprints.
-- Environment: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URLS=https://otion-nine.vercel.app`, plus `MONGO_URI` (Atlas) and `JWT_SECRET`. Secrets are configured securely in Render environment variables.
-- Automated Image Redeploy: On new image release, Render triggers an instant zero-downtime rolling restart pulling the latest container digest.
+### 3. Database — Cloud Replica Set (MongoDB Atlas)
 
-**Client — Static / Container Deployment**
-
-- **Production Edge**: Static build on Vercel (<https://otion-nine.vercel.app>) with global edge caching and automatic SSL.
-- **Self-Hosted Container**: Pull and run `rampanjwani/otion-client:latest` behind an Nginx reverse proxy using Docker or Kubernetes.
-
-**One-Command Full-Stack Docker Deployment**
-
-You can deploy the complete multi-tier system on any VPS, cloud VM, or server without installing Git, Node.js, or building from source:
-
-```bash
-curl -sO https://raw.githubusercontent.com/RamPanjwani/Otion/main/docker-compose.yml
-curl -sO https://raw.githubusercontent.com/RamPanjwani/Otion/main/.env.example && mv .env.example .env
-# Edit .env with your secrets, then launch:
-docker compose pull
-docker compose up -d
-```
+- Cloud-hosted MongoDB 7.0 replica set (`test` database).
+- Seeded with verified demo accounts (`demo@otion.app`, `maya@otion.app`, `sam@otion.app`, password `OtionDemo123!`).
+- All 13 migrations applied and verified. Zero local database dependencies.
 - **Staging** is a second free Render service, `otion-api-staging`, tracking `main` with
   `MONGO_URI=.../otion_staging`, its own `JWT_SECRET`, and the same build/start/health settings. It
   sleeps when idle, so its first request after a pause takes up to a minute. Vercel preview builds

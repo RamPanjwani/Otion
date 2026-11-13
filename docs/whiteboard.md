@@ -307,6 +307,8 @@ The entire Otion ecosystem is containerized, distributed via Docker Hub, and dep
    - **Job 4: Automated Deployment**: Dispatches deploy triggers for zero-downtime container rolling restart on Render and edge deployment on Vercel.
 
 ### Why X instead of Y?
+- **Why cloud container deployment on Vercel & Render instead of local deployment?**  
+  Local deployment introduces environment variance, port conflicts, host dependency mismatches, and lacks real multi-user testing capability. By deploying the containerized API on **Render** (using pre-built Docker Hub images) and the client on **Vercel**, the application achieves true cloud availability, edge caching, continuous uptime, and automated SSL termination against MongoDB Atlas. Local deployment is completely removed from our production evaluation model.
 - **Why deploy through prebuilt Docker images instead of building from GitHub on the host?**  
   Deploying through Docker images provides **immutable, hermetic artifacts**. Building from Git directly on production servers suffers from "works on my machine" drift, slow build times (running `npm ci` and compiling dependencies on constrained server CPUs), potential npm registry outages, and exposed build-tool vulnerabilities in the runtime environment. Docker images ensure that the exact container binary tested and passed in CI is what runs in production.
 - **Why multi-stage Docker builds instead of single-stage images?**  
