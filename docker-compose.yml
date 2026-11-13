@@ -11,6 +11,7 @@ services:
       retries: 10
 
   server:
+    image: rampanjwani/otion-server:latest
     build: ./server
     restart: unless-stopped
     environment:
@@ -29,6 +30,7 @@ services:
       retries: 10
 
   client:
+    image: rampanjwani/otion-client:latest
     build:
       context: ./client
       args:

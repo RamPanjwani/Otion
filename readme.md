@@ -186,14 +186,21 @@ demo sign-in, note creation plus autosave surviving a reload, and a password-pro
 that renders read-only. Install Chromium once with `npx playwright install chromium`, and override
 `E2E_MONGO_URI` when MongoDB needs credentials.
 
-## Docker
+## Docker & Container Deployment
+
+Pre-built multi-platform container images are deployed and hosted on **Docker Hub**:
+
+- **Backend API & Realtime Engine**: [`rampanjwani/otion-server:latest`](https://hub.docker.com/r/rampanjwani/otion-server) (alias: [`rampanjwani/otion-api:latest`](https://hub.docker.com/r/rampanjwani/otion-api))
+- **Frontend Web & Nginx Proxy**: [`rampanjwani/otion-client:latest`](https://hub.docker.com/r/rampanjwani/otion-client)
+
+### Running with Docker Compose
 
 The compose stack runs MongoDB, the API and an nginx-served client, with health-checked startup
 ordering and `/api` + `/socket.io` proxying. Docker Compose v2+ is required (`docker compose`).
 
 ```bash
 cp .env.example .env     # set JWT_SECRET (and CLIENT_URLS if needed)
-docker compose up -d --build
+docker compose up -d     # automatically pulls rampanjwani/otion-* images
 docker compose exec server npm run migrate
 docker compose exec -e CLIENT_URL=http://localhost:8080 server npm run seed   # optional demo data
 ```
