@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./otion-icon.svg" width="96" height="96" alt="Otion Logo" />
+</p>
+
 # Otion
 
 Otion is a full-stack collaborative notes workspace built with React 19, Express 5, MongoDB and

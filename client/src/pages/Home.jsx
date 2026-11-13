@@ -57,7 +57,7 @@ export default function Home() {
             </div>
             <div className="grid min-h-[400px] grid-cols-[150px_1fr] overflow-hidden rounded-b-[18px] bg-surface/75 sm:grid-cols-[180px_1fr]">
               <aside className="border-r border-line bg-panel/45 p-3">
-                <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-[10px] font-bold text-surface">O</span><span className="truncate text-xs font-semibold">My Notes</span></div>
+                <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><img src="/otion-icon.svg" alt="Otion" className="h-7 w-7 rounded-lg shrink-0 object-contain shadow-sm" /><span className="truncate text-xs font-semibold">My Notes</span></div>
                 <PreviewNav icon={<Sparkles size={13} />} label="Quick notes" />
                 <PreviewNav icon={<FileText size={13} />} label="Product brief" active />
                 <PreviewNav icon={<Users2 size={13} />} label="Research" />
