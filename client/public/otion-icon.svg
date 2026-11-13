@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#1e1838" />
+      <stop offset="60%" stop-color="#0e0f15" />
+      <stop offset="100%" stop-color="#08080c" />
+    </radialGradient>
+
+    <!-- Squircle Border Gradient -->
+    <linearGradient id="squircleBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.7" />
+    </linearGradient>
+
+    <!-- Squircle Glass Fill -->
+    <linearGradient id="squircleFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181528" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#0f111a" stop-opacity="0.98" />
+    </linearGradient>
+
+    <!-- Inner Ambient Core Glow -->
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#6366f1" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Note Leaf Gradients -->
+    <!-- Leaf 1: Deep Indigo Foundation -->
+    <linearGradient id="leafBase" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#312e81" />
+      <stop offset="50%" stop-color="#4338ca" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+
+    <!-- Leaf 2: Luminous Purple Flow -->
+    <linearGradient id="leafMid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="40%" stop-color="#9333ea" />
+      <stop offset="100%" stop-color="#6b21a8" />
+    </linearGradient>
+
+    <!-- Leaf 3: Vibrant Violet to Cyan -->
+    <linearGradient id="leafTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="35%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+
+    <!-- Fold / Shading Gradients -->
+    <linearGradient id="leafFold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Sparkle Glow -->
+    <radialGradient id="sparkleGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="30%" stop-color="#a5f3fc" />
+      <stop offset="70%" stop-color="#38bdf8" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+
+    <filter id="glowShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="30" flood-color="#7c3aed" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1024" height="1024" fill="url(#bgGlow)" />
+
+  <!-- Centered App Icon Container (Squircle) -->
+  <g filter="url(#softShadow)">
+    <rect x="128" y="128" width="768" height="768" rx="200" ry="200" fill="url(#squircleFill)" stroke="url(#squircleBorder)" stroke-width="3.5" />
+  </g>
+
+  <!-- Ambient Light Behind Emblem -->
+  <circle cx="512" cy="512" r="320" fill="url(#coreGlow)" />
+
+  <!-- Main Otion 'O' Icon Mark -->
+  <g filter="url(#glowShadow)">
+    <!-- Base Note Canvas / Back Wing -->
+    <path d="M 360 280 
+             C 440 230, 584 230, 664 280 
+             C 744 330, 784 430, 764 530 
+             C 744 630, 674 720, 580 754 
+             C 500 782, 420 760, 360 710 
+             C 310 668, 274 598, 274 512 
+             C 274 426, 305 320, 360 280 Z" 
+          fill="url(#leafBase)" />
+
+    <!-- Ruled Subtle Texture on Back Wing -->
+    <path d="M 390 380 Q 512 350 634 380" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" stroke-linecap="round" fill="none" />
+    <path d="M 370 440 Q 512 410 654 440" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" stroke-linecap="round" fill="none" />
+    <path d="M 360 500 Q 512 470 664 500" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" stroke-linecap="round" fill="none" />
+    <path d="M 370 560 Q 512 530 654 560" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" stroke-linecap="round" fill="none" />
+
+    <!-- Middle Flowing Leaf (Forming the Dynamic Infinity/Loop of Otion) -->
+    <path d="M 664 280 
+             C 750 340, 770 470, 720 570 
+             C 670 670, 560 740, 450 740 
+             C 340 740, 260 660, 260 550 
+             C 260 450, 330 360, 430 330 
+             C 500 308, 590 320, 640 370 
+             C 580 430, 480 430, 410 470 
+             C 370 492, 350 530, 360 570 
+             C 375 620, 430 650, 480 650 
+             C 550 650, 610 600, 640 540 
+             C 680 460, 660 360, 664 280 Z" 
+          fill="url(#leafMid)" />
+
+    <!-- Top Forward Fold (Vibrant Cyan-Violet Ribbon / Fresh Note Page) -->
+    <path d="M 320 370 
+             C 360 280, 460 250, 560 270 
+             C 660 290, 730 370, 740 470 
+             C 750 570, 690 660, 600 700 
+             C 520 735, 430 720, 370 660 
+             C 440 640, 520 620, 570 570 
+             C 620 520, 630 450, 590 390 
+             C 550 330, 470 320, 400 340 
+             C 360 352, 336 362, 320 370 Z" 
+          fill="url(#leafTop)" />
+
+    <!-- Origami Dynamic Edge Highlight -->
+    <path d="M 320 370 Q 420 330 520 340 Q 640 355 690 440 Q 735 520 700 620" 
+          stroke="#ffffff" stroke-opacity="0.45" stroke-width="3" stroke-linecap="round" fill="none" />
+
+    <!-- Diamond Core / Idea Prism (Center of 'O') -->
+    <path d="M 512 430 
+             L 556 496 
+             L 512 562 
+             L 468 496 Z" 
+          fill="#ffffff" fill-opacity="0.95" />
+    <path d="M 512 444 
+             L 546 496 
+             L 512 548 
+             L 478 496 Z" 
+          fill="url(#leafFold)" />
+  </g>
+
+  <!-- Sparkle of Inspiration / Craft (Top-Right of Mark) -->
+  <g transform="translate(685, 235)">
+    <circle cx="0" cy="0" r="48" fill="url(#sparkleGlow)" />
+    <!-- 4-point star -->
+    <path d="M 0 -36 
+             Q 0 0 36 0 
+             Q 0 0 0 36 
+             Q 0 0 -36 0 
+             Q 0 0 0 -36 Z" 
+          fill="#ffffff" />
+    <circle cx="0" cy="0" r="5" fill="#a5f3fc" />
+  </g>
+
+  <!-- Small secondary twinkle -->
+  <g transform="translate(760, 310)">
+    <path d="M 0 -16 Q 0 0 16 0 Q 0 0 0 16 Q 0 0 -16 0 Q 0 0 0 -16 Z" fill="#c084fc" fill-opacity="0.85" />
+  </g>
+</svg>
