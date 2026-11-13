@@ -38,7 +38,8 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--color-canvas); color: var(--color-ink); }
+html, body, #root { height: 100%; }
+body { margin: 0; min-width: 0; overflow-x: hidden; background: var(--color-canvas); color: var(--color-ink); }
 .dark body { background: var(--color-canvas); }
 .dark .bg-white { background-color: var(--color-surface); }
 .dark .text-red-700 { color: #fca5a5; }
@@ -76,6 +77,9 @@ select:focus-visible,
 ::selection { background: rgb(109 93 252 / 0.28); color: var(--color-ink); }
 
 .otion-scrollbar { scrollbar-width: thin; scrollbar-color: #71717a55 transparent; }
+/* Pages own their scroll area so the shell never grows past the viewport.
+   The bar only appears once the content inside actually overflows. */
+.otion-page-scroll { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #71717a55 transparent; }
 .editor-block { scroll-margin-top: 6rem; }
 .editor-block:empty::before { content: attr(data-placeholder); color: #aaa7a6; pointer-events: none; }
 
@@ -92,6 +96,7 @@ select:focus-visible,
 .dark .otion-orb { opacity: 0.14; }
 .dark .otion-ambient-subtle .otion-orb { opacity: 0.08; }
 
+@layer components {
 .glass-panel { border: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-surface) 92%, transparent); box-shadow: 0 8px 28px rgb(24 24 27 / 0.055); backdrop-filter: blur(18px); }
 .surface-card { border: 1px solid var(--color-line); background: var(--color-surface); box-shadow: 0 1px 2px rgb(24 24 27 / 0.035); }
 .elevated-panel { border: 1px solid var(--color-line); background: var(--color-elevated); box-shadow: 0 12px 36px rgb(24 24 27 / 0.14); }
@@ -120,6 +125,7 @@ select:focus-visible,
 .field-control:focus,
 .field-control:focus-within { border-color: color-mix(in srgb, var(--color-muted) 65%, var(--color-line)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ink) 8%, transparent); outline: none; }
 .field-control::placeholder { color: var(--color-muted); }
+}
 
 .workspace-sidebar { box-shadow: inset -1px 0 0 rgb(0 0 0 / 0.015); overflow: hidden; }
 .workspace-sidebar nav > a,
@@ -170,6 +176,55 @@ select:focus-visible,
   .otion-orb-cyan, .otion-orb-violet, .otion-orb-pink { width: 85vw; }
 }
 
+/* Height-aware compaction keeps the full-page experiences inside the viewport
+   on short laptops and phones instead of introducing a page scrollbar. */
+@media (max-height: 700px) {
+  .auth-shell { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .auth-card { padding: 1.1rem 1.25rem; border-radius: 1.25rem; }
+  .auth-icon { height: 2.25rem; width: 2.25rem; margin-bottom: 0.8rem; }
+  .auth-title { font-size: 1.55rem; }
+  .auth-subtitle { margin-top: 0.2rem; margin-bottom: 1rem; font-size: 0.875rem; line-height: 1.25rem; }
+  .auth-footer { margin-top: 0.8rem; }
+  .auth-form { gap: 0.5rem; }
+}
+
+@media (max-height: 680px) {
+  .home-preview { display: none; }
+  .home-hero { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-height: 640px) {
+  .auth-icon { display: none; }
+  .auth-card { padding: 0.9rem 1rem; }
+  .auth-shell { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+}
+
+@media (max-height: 620px) {
+  .home-badge { display: none; }
+  .home-hero { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  .home-hero h1 { font-size: clamp(1.7rem, 7vw, 2.5rem); }
+  .home-hero p { margin-top: 0.75rem; font-size: 0.95rem; line-height: 1.4rem; }
+  .home-hero .primary-action,
+  .home-hero .secondary-action { padding: 0.6rem 1rem; font-size: 0.875rem; }
+}
+
+@media (max-height: 580px) {
+  .auth-shell { padding: 0.35rem 0.75rem; }
+  .auth-card { padding: 0.75rem 0.9rem; }
+  .auth-footer { margin-top: 0.5rem; }
+}
+
+@media (max-height: 540px) {
+  .auth-subtitle { display: none; }
+}
+
+@media (max-height: 500px) {
+  .auth-card { padding: 0.6rem 0.85rem; }
+  .auth-footer { margin-top: 0.35rem; }
+  .auth-form { gap: 0.4rem; }
+  .auth-title { font-size: 1.35rem; }
+}
+
 @media print {
   .workspace-sidebar,
   .workspace-navbar,
@@ -180,9 +235,15 @@ select:focus-visible,
     display: none !important;
   }
   .app-shell {
+    height: auto !important;
     padding-left: 0 !important;
+    overflow: visible !important;
     background: white !important;
     color: black !important;
+  }
+  .otion-page-scroll {
+    height: auto !important;
+    overflow: visible !important;
   }
   .note-canvas {
     max-width: 100% !important;

@@ -51,14 +51,14 @@ export default function Register() {
 
   return (
     <AuthShell title={invitationToken ? 'Join the workspace' : 'Create your workspace'} subtitle={invitationToken ? 'Create your account to open the shared note.' : 'A focused home for your notes, decisions, and team.'} icon={invitationToken ? <MailCheck size={20} /> : <UserPlus size={20} />} footer={<>Already use Otion? <Link to="/login" className="font-semibold text-ink hover:text-accent">Sign in</Link></>}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+      <form onSubmit={submit} className="auth-form flex flex-col gap-3" noValidate>
         {invitationToken && <p className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-200"><MailCheck size={16} /> You were invited to collaborate on an Otion note.</p>}
         <Field label="Name" value={form.name} onChange={(value) => update('name', value)} error={errors.name} autoComplete="name" placeholder="Your name" />
         <Field label="Email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} autoComplete="email" placeholder="you@company.com" />
         <Field label="Password" type="password" value={form.password} onChange={(value) => update('password', value)} error={errors.password} minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
         <Field label="Confirm password" type="password" value={form.confirmPassword} onChange={(value) => update('confirmPassword', value)} error={errors.confirmPassword} minLength={8} autoComplete="new-password" placeholder="Repeat your password" />
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <button disabled={submitting} className="primary-action mt-2 w-full px-4 py-3.5 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Creating…' : <>{invitationToken ? 'Accept invitation' : 'Create account'} <ArrowRight size={17} /></>}</button>
+        <button disabled={submitting} className="primary-action mt-1 w-full px-4 py-3 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Creating…' : <>{invitationToken ? 'Accept invitation' : 'Create account'} <ArrowRight size={17} /></>}</button>
       </form>
     </AuthShell>
   );

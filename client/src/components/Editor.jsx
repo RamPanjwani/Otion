@@ -390,7 +390,7 @@ export default function Editor({ value = [], onChange, onFormat, readOnly = fals
     setSlashQuery('');
   };
 
-  return <div ref={rootRef} className={`relative pb-56 ${smallText ? 'editor-density-small' : ''}`}>
+  return <div ref={rootRef} className={`relative pb-24 sm:pb-32 ${smallText ? 'editor-density-small' : ''}`}>
     {!readOnly && selectionRanges.length > 0 && toolbarPosition && <div ref={formattingRef} className="selection-toolbar fixed z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-0.5 rounded-lg p-1" style={{ left: toolbarPosition.left, top: toolbarPosition.top }} role="toolbar" aria-label="Format selected text">
       <FormatButton label="Bold" active={attributeActive('bold')} onClick={() => applyFormat('bold')}><Bold size={16} /></FormatButton>
       <FormatButton label="Italic" active={attributeActive('italic')} onClick={() => applyFormat('italic')}><Italic size={16} /></FormatButton>

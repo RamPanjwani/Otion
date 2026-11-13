@@ -16,46 +16,46 @@ export default function Home() {
   const targetPath = user ? '/dashboard' : '/register';
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
+    <main className="relative flex h-dvh flex-col overflow-hidden">
       <AmbientBackground />
-      <header className="relative z-20 px-4 pt-4 sm:px-6">
-        <nav className="glass-panel mx-auto flex h-16 max-w-6xl items-center justify-between rounded-2xl px-4 sm:px-5" aria-label="Primary navigation">
+      <header className="relative z-20 shrink-0 px-3 pt-4 sm:px-6">
+        <nav className="glass-panel mx-auto flex h-14 max-w-6xl items-center justify-between rounded-2xl px-3 sm:h-16 sm:px-5" aria-label="Primary navigation">
           <Link to="/" aria-label="Otion home"><BrandMark compact /></Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button type="button" onClick={toggleTheme} className="icon-action h-10 w-10" aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}>
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <Link to={user ? '/dashboard' : '/login'} className="hidden rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:text-ink sm:inline-flex">{user ? 'Your notes' : 'Sign in'}</Link>
-            <Link to={targetPath} className="primary-action px-4 py-2.5 text-sm">{user ? 'Open Otion' : 'Get started'}<ArrowRight size={16} /></Link>
+            <Link to={targetPath} className="primary-action whitespace-nowrap px-3 py-2.5 text-sm sm:px-4">{user ? 'Open Otion' : 'Get started'}<ArrowRight size={16} /></Link>
           </div>
         </nav>
       </header>
 
-      <section className="relative mx-auto grid min-h-[calc(100vh-96px)] max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-20">
+      <section className="home-hero relative mx-auto grid w-full max-w-6xl flex-1 min-h-0 items-center gap-8 overflow-hidden px-5 py-6 sm:px-6 sm:py-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12 lg:px-8 lg:py-10">
         <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease }} className="relative z-10">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted shadow-sm backdrop-blur-xl">
+          <div className="home-badge mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted shadow-sm backdrop-blur-xl sm:mb-6">
             <Sparkles size={14} className="text-accent" /> A calm space for thoughts and ideas
           </div>
-          <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-3xl text-[clamp(2.25rem,6.5vw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.055em]">
             Ideas move faster when everyone is in the flow.
           </h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-muted sm:text-xl">
+          <p className="mt-5 max-w-xl text-base leading-7 text-muted sm:mt-6 sm:text-lg sm:leading-8">
             Write, organize, and shape notes together in one calm space—without losing context to tabs, tools, or version chaos.
           </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link to={targetPath} className="primary-action px-6 py-3.5">{user ? 'Open your notes' : 'Start writing'}<ArrowRight size={18} /></Link>
-            <Link to={user ? '/dashboard' : '/login'} className="secondary-action px-6 py-3.5">{user ? 'View all notes' : 'I already have an account'}</Link>
+          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+            <Link to={targetPath} className="primary-action whitespace-nowrap px-6 py-3.5">{user ? 'Open your notes' : 'Start writing'}<ArrowRight size={18} /></Link>
+            <Link to={user ? '/dashboard' : '/login'} className="secondary-action whitespace-nowrap px-6 py-3.5">{user ? 'View all notes' : 'I already have an account'}</Link>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, scale: 0.96, y: 26 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease }} className="relative mx-auto w-full max-w-[620px]">
+        <motion.div initial={{ opacity: 0, scale: 0.96, y: 26 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease }} className="home-preview relative mx-auto hidden w-full max-w-[620px] lg:block">
           <div className="elevated-panel overflow-hidden rounded-[24px] p-2">
             <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
               <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div>
               <span className="text-[11px] font-medium text-muted">otion.app</span>
               <span className="w-12" />
             </div>
-            <div className="grid min-h-[430px] grid-cols-[150px_1fr] overflow-hidden rounded-b-[18px] bg-surface/75 sm:grid-cols-[180px_1fr]">
+            <div className="grid min-h-[400px] grid-cols-[150px_1fr] overflow-hidden rounded-b-[18px] bg-surface/75 sm:grid-cols-[180px_1fr]">
               <aside className="border-r border-line bg-panel/45 p-3">
                 <div className="mb-5 flex items-center gap-2 px-2 py-1.5"><span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-[10px] font-bold text-surface">O</span><span className="truncate text-xs font-semibold">My Notes</span></div>
                 <PreviewNav icon={<Sparkles size={13} />} label="Quick notes" />

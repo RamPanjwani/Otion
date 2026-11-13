@@ -17,7 +17,7 @@ export default function Navbar({ title = 'Workspace', collaborators = [], onShar
 
   const statusLabel = saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : saveStatus === 'unsaved' ? 'Unsaved' : 'Saved';
   return (
-    <header className="workspace-navbar sticky top-0 z-20 flex h-14 items-center border-b border-line bg-canvas/92 px-3 pl-14 backdrop-blur-xl md:px-4 md:pl-4">
+    <header className="workspace-navbar sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-line bg-canvas/92 px-3 pl-14 backdrop-blur-xl md:px-4 md:pl-4">
       <div className="flex min-w-0 flex-1 items-center gap-2"><div className="truncate text-sm font-medium tracking-[-0.01em]">{title}</div>{onSave && <span className={`hidden text-[11px] sm:inline ${saveStatus === 'error' ? 'text-red-600' : 'text-muted'}`}>{statusLabel}</span>}</div>
       <div className="flex items-center gap-0.5 sm:gap-1">
         <div className="hidden -space-x-2 sm:flex">

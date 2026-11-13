@@ -40,7 +40,7 @@ export function ToastProvider({ children }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-5 right-5 z-50 flex w-full max-w-sm flex-col gap-2 px-4 sm:px-0"
+        className="pointer-events-none fixed bottom-5 left-4 right-4 z-50 flex flex-col gap-2 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm sm:px-0"
       >
         <AnimatePresence mode="sync">
           {toasts.map((toast) => (

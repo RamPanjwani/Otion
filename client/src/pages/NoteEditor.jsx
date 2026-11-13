@@ -295,7 +295,7 @@ export default function NoteEditor() {
   };
 
   return (
-    <div className="app-shell relative min-h-screen bg-canvas">
+    <div className="app-shell relative flex h-dvh flex-col overflow-hidden bg-canvas">
       <Sidebar notes={notes} onCreated={(created) => setNotes((current) => [created, ...current.filter((item) => item._id !== created._id)])} onReordered={setNotes} />
       <Navbar
         title={note?.title || 'Note'}
@@ -320,8 +320,8 @@ export default function NoteEditor() {
           stats: noteStats,
         }}
       />
-      {error ? <div className="mx-auto max-w-2xl p-10 text-red-700">{error}</div> : !note || note._id !== id ? <Loading fullPage /> : note && <main className="relative pb-20">
-        <article ref={articleRef} onPointerMove={handlePointerMove} className={`note-canvas relative mx-auto min-h-[calc(100vh-56px)] px-6 pb-20 pt-14 transition-[max-width,padding] sm:px-12 sm:pt-20 lg:px-16 ${viewSettings.fullWidth ? 'max-w-[1440px]' : 'max-w-[920px]'}`}>
+      {error ? <div className="otion-page-scroll mx-auto w-full max-w-2xl flex-1 min-h-0 p-10 text-red-700">{error}</div> : !note || note._id !== id ? <div className="flex flex-1 items-center justify-center"><Loading /></div> : note && <main className="otion-page-scroll relative min-h-0 flex-1">
+        <article ref={articleRef} onPointerMove={handlePointerMove} className={`note-canvas relative mx-auto min-h-full px-6 pb-12 pt-10 transition-[max-width,padding] sm:px-12 sm:pt-16 lg:px-16 ${viewSettings.fullWidth ? 'max-w-[1440px]' : 'max-w-[920px]'}`}>
           <button onClick={['owner', 'editor'].includes(note.accessRole) ? openNoteStyle : undefined} className="mb-3 rounded-lg text-5xl leading-none transition hover:bg-panel/70 sm:text-6xl" aria-label="Note emoji">{note.icon || '📝'}</button>
           <input value={note.title || ''} readOnly={!['owner', 'editor'].includes(note.accessRole)} onChange={(event) => updateNote({ title: event.target.value })} placeholder="Untitled note" className="mb-9 w-full bg-transparent text-3xl font-bold leading-[1.08] tracking-[-0.035em] outline-none placeholder:text-muted/35 sm:text-4xl lg:text-5xl" />
           {actionError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{actionError}</p>}

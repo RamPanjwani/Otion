@@ -128,10 +128,10 @@ export default function Trash() {
   };
 
   return (
-    <div className="app-shell relative min-h-screen bg-canvas">
+    <div className="app-shell relative flex h-dvh flex-col overflow-hidden bg-canvas">
       <Sidebar notes={active} onCreated={(note) => setActive((items) => [note, ...items.filter((item) => item._id !== note._id)])} onReordered={setActive} />
       <Navbar title="Trash" />
-      <PageTransition as="main" className="mx-auto max-w-4xl px-6 py-12 sm:px-10 sm:py-16">
+      <PageTransition as="main" className="otion-page-scroll mx-auto w-full max-w-4xl flex-1 min-h-0 px-6 py-8 sm:px-10 sm:py-12">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-[-0.04em]">Trash</h1>

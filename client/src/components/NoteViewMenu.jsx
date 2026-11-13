@@ -55,7 +55,7 @@ export default function NoteViewMenu({
         <Settings2 size={18} />
       </button>
       {open && (
-        <div className="elevated-panel absolute right-0 top-11 z-50 w-[min(300px,calc(100vw-1.5rem))] rounded-xl p-2">
+        <div className="elevated-panel fixed left-4 right-4 top-16 z-50 rounded-xl p-2 lg:absolute lg:left-auto lg:right-0 lg:top-11 lg:w-[min(300px,calc(100vw-1.5rem))]">
           <div className="px-2 pb-2 pt-1">
             <p className="text-sm font-semibold">Customize note</p>
             <p className="mt-0.5 text-xs text-muted">These view settings stay on this device.</p>

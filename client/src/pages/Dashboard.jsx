@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { ArrowRight, CheckSquare, Clock3, FilePlus2, FolderOpen, MoreHorizontal, Square, Star, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -36,7 +36,8 @@ export default function Dashboard() {
     }
     return [...favorites, ...others];
   }, [notes]);
-  const { virtualItems, totalHeight, isVirtualized } = useVirtualList(visibleNotes, { itemHeight: 68 });
+  const scrollRef = useRef(null);
+  const { virtualItems, totalHeight, isVirtualized } = useVirtualList(visibleNotes, { itemHeight: 68, containerRef: scrollRef });
   const firstName = user?.name?.split(' ')[0] || 'there';
 
   const toggleSelected = (noteId) => setSelectedIds((current) => {
@@ -75,10 +76,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="app-shell relative min-h-screen bg-canvas">
+    <div className="app-shell relative flex h-dvh flex-col overflow-hidden bg-canvas">
       <Sidebar notes={notes} onCreated={(note) => setNotes((current) => [note, ...current.filter((item) => item._id !== note._id)])} onReordered={setNotes} />
       <Navbar title="Home" />
-      <PageTransition as="main" className="mx-auto max-w-5xl px-5 py-12 sm:px-10 lg:py-16">
+      <PageTransition as="main" scrollRef={scrollRef} className="otion-page-scroll mx-auto w-full max-w-5xl flex-1 min-h-0 px-5 py-8 sm:px-10 sm:py-12 lg:py-16">
         <section className="flex flex-col gap-6 border-b border-line pb-10 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm text-muted">Welcome back, {firstName}</p>

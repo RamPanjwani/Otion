@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
-import { ArrowRight, LogIn, Moon, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowRight, Eye, EyeOff, LogIn, Moon, Sun } from 'lucide-react';
+import { useId, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import AmbientBackground from '../components/AmbientBackground';
@@ -50,11 +50,11 @@ export default function Login() {
 
   return (
     <AuthShell title="Welcome back" subtitle="Pick up exactly where your team left off." icon={<LogIn size={20} />} footer={<>New to Otion? <Link to="/register" className="font-semibold text-ink hover:text-accent">Create an account</Link></>}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+      <form onSubmit={submit} className="auth-form flex flex-col gap-3" noValidate>
         <Field label="Email" type="email" value={form.email} onChange={(value) => update('email', value)} error={errors.email} autoComplete="email" placeholder="you@company.com" />
         <Field label="Password" type="password" value={form.password} onChange={(value) => update('password', value)} error={errors.password} autoComplete="current-password" placeholder="Your password" />
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <button disabled={submitting} className="primary-action mt-2 w-full px-4 py-3.5 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Signing in…' : <>Sign in <ArrowRight size={17} /></>}</button>
+        <button disabled={submitting} className="primary-action mt-1 w-full px-4 py-3 disabled:cursor-wait disabled:opacity-50">{submitting ? 'Signing in…' : <>Sign in <ArrowRight size={17} /></>}</button>
       </form>
     </AuthShell>
   );
@@ -63,29 +63,60 @@ export default function Login() {
 export function AuthShell({ title, subtitle, children, footer, icon }) {
   const { theme, toggleTheme } = useTheme();
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden px-5 py-12">
+    <main className="auth-shell relative flex h-dvh flex-col overflow-hidden px-5 py-5 sm:py-6">
       <AmbientBackground />
-      <div className="absolute left-5 top-5 sm:left-8 sm:top-7"><Link to="/"><BrandMark compact /></Link></div>
-      <button type="button" onClick={toggleTheme} className="icon-action absolute right-5 top-5 h-10 w-10 border border-line bg-surface/65 backdrop-blur-xl sm:right-8 sm:top-7" aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="w-full max-w-[430px]">
-        <section className="glass-panel rounded-[24px] p-6 sm:p-8">
-          <div className="mb-6 grid h-12 w-12 place-items-center rounded-2xl border border-line bg-panel text-muted">{icon || <LogIn size={20} />}</div>
-          <h1 className="text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
-          <p className="mb-8 mt-2 leading-6 text-muted">{subtitle}</p>
-          {children}
-        </section>
-        <p className="mt-6 text-center text-sm text-muted">{footer}</p>
-      </motion.div>
+      <header className="relative z-20 flex shrink-0 items-center justify-between">
+        <Link to="/" aria-label="Otion home"><BrandMark compact /></Link>
+        <button type="button" onClick={toggleTheme} className="icon-action h-10 w-10 border border-line bg-surface/65 backdrop-blur-xl" aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+      </header>
+      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-3">
+        <motion.div initial={{ opacity: 0, scale: 0.96, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="auth-panel w-full max-w-[430px]">
+          <section className="auth-card glass-panel rounded-[24px] p-5 sm:p-7">
+            <div className="auth-icon mb-5 grid h-11 w-11 place-items-center rounded-2xl border border-line bg-panel text-muted">{icon || <LogIn size={20} />}</div>
+            <h1 className="auth-title text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
+            <p className="auth-subtitle mb-6 mt-1.5 leading-6 text-muted">{subtitle}</p>
+            {children}
+          </section>
+          <p className="auth-footer mt-5 text-center text-sm text-muted">{footer}</p>
+        </motion.div>
+      </div>
     </main>
   );
 }
 
 export function Field({ label, type = 'text', value, onChange, error, minLength, autoComplete, placeholder }) {
+  const id = useId();
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === 'password';
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-semibold">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} minLength={minLength} autoComplete={autoComplete} placeholder={placeholder} aria-invalid={Boolean(error)} className={`field-control px-4 py-3 ${error ? 'border-red-400 focus:border-red-500' : ''}`} />
+    <div className="block">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold">{label}</label>
+      <div className="relative">
+        <input
+          id={id}
+          type={isPassword && revealed ? 'text' : type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          minLength={minLength}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          aria-invalid={Boolean(error)}
+          className={`field-control px-4 py-2.5 ${isPassword ? 'pr-11' : ''} ${error ? 'border-red-400 focus:border-red-500' : ''}`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((current) => !current)}
+            className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-muted transition hover:text-ink"
+            aria-label={revealed ? 'Hide characters' : 'Show characters'}
+            aria-pressed={revealed}
+            title={revealed ? 'Hide password' : 'Show password'}
+          >
+            {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
       {error && <span className="mt-1.5 block text-xs font-medium text-red-600">{error}</span>}
-    </label>
+    </div>
   );
 }
